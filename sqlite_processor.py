@@ -4,15 +4,20 @@ import apsw
 class DealsSection ():
     """A class that holds data associated with a section of pages - such as Priority Deals, New Deals, Other Deals, etc."""
 
-    def __init__(self, description) -> None:
-        self.description = description
+    def __init__(self, deal_type) -> None:
+        self.deal_type = deal_type
         self.first_page = 0
         self.number_of_pages = 0
         self.page_list = []
 
+    def save (self, connection, table_name, file_key):
+        if self.number_of_pages > 0:
+            query = f"insert into {table_name} values({file_key}, '{self.deal_type}', {self.number_of_pages}, '{str(self.page_list)}')"
+            connection.execute (query)
+
     def print (self):
-        print (f"Number of {self.description} Pages = {self.number_of_pages}")
-        print (f"{self.description} Pages = {self.page_list}")
+        print (f"Number of {self.deal_type} Pages = {self.number_of_pages}")
+        print (f"{self.deal_type} Pages = {self.page_list}")
 
     def check_data (self):
         assert (self.number_of_pages == len (self.page_list))
@@ -37,64 +42,33 @@ class Phase1Db ():
     def __init__ (self):
         super ().__init__ ()
         self.PATH ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/sqldb_phase1"
-        self.PHASE1_TABLE = "phase1_table"
-        self.PRIORITY_DEALS_TABLE = "priority_deals_table"
-        self.NEW_DEALS_TABLE = "new_deals_table"
-        self.OTHER_DEALS_TABLE = "other_deals_table"
-        self.ACTIVATE_POTENTIAL_TABLE = "activate_potential_table"
-        self.COMMERCIAL_PARTNERSHIP_TABLE = "commercial_partnership_table"
-        self.PASS_TRACK_DEALS_TABLE = "pass_track_deals_table"
+        self.PHASE1_TABLE_MAIN = "phase1_table_main"
+        self.PHASE1_TABLE_DEALS = "phase1_table_deals"
         self.FILE_KEY = "file_key"
         self.FILE_NAME = "file_name"
+        self.DEAL_TYPE = "deal_type"
         self.NUMBER_OF_PAGES = "number_of_pages"
         self.PAGE_LIST = "pages"
 
-    def save (self, phase1_row):
+    def save (self, phase1_pdf_data):
         if os.path.isfile (self.PATH):
             connection = apsw.Connection (self.PATH, flags = apsw.SQLITE_OPEN_READWRITE) # This connection simply opens a file
         else:
             connection = apsw.Connection (self.PATH) # This connection creates the file
-            query = f"create table {self.PHASE1_TABLE}({self.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {self.FILE_NAME} TEXT, {self.NUMBER_OF_PAGES} INTEGER)"
+            query = f"create table {self.PHASE1_TABLE_MAIN}({self.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {self.FILE_NAME} TEXT, {self.NUMBER_OF_PAGES} INTEGER)"
             connection.execute (query)
-            query = f"create table {self.PRIORITY_DEALS_TABLE}({self.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {self.NUMBER_OF_PAGES} INTEGER, {self.PAGE_LIST} TEXT)"
-            connection.execute (query)
-            query = f"create table {self.NEW_DEALS_TABLE}({self.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {self.NUMBER_OF_PAGES} INTEGER, {self.PAGE_LIST} TEXT)"
-            connection.execute (query)
-            query = f"create table {self.OTHER_DEALS_TABLE}({self.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {self.NUMBER_OF_PAGES} INTEGER, {self.PAGE_LIST} TEXT)"
-            connection.execute (query)
-            query = f"create table {self.ACTIVATE_POTENTIAL_TABLE}({self.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {self.NUMBER_OF_PAGES} INTEGER, {self.PAGE_LIST} TEXT)"
-            connection.execute (query)
-            query = f"create table {self.COMMERCIAL_PARTNERSHIP_TABLE}({self.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {self.NUMBER_OF_PAGES} INTEGER, {self.PAGE_LIST} TEXT)"
-            connection.execute (query)
-            query = f"create table {self.PASS_TRACK_DEALS_TABLE}({self.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {self.NUMBER_OF_PAGES} INTEGER, {self.PAGE_LIST} TEXT)"
+            query = f"create table {self.PHASE1_TABLE_DEALS}({self.FILE_KEY} TEXT NOT NULL, {self.DEAL_TYPE} TEXT NOT NULL, {self.NUMBER_OF_PAGES} INTEGER, {self.PAGE_LIST} TEXT, primary key ({self.FILE_KEY}, {self.DEAL_TYPE}), FOREIGN KEY({self.FILE_KEY}) REFERENCES {self.PHASE1_TABLE_MAIN}({self.FILE_KEY}))"
             connection.execute (query)
 
-        query = f"insert into {self.PHASE1_TABLE} values({phase1_row.file_key}, '{phase1_row.file_name}', {phase1_row.number_of_pages})"
+        query = f"insert into {self.PHASE1_TABLE_MAIN} values({phase1_pdf_data.file_key}, '{phase1_pdf_data.file_name}', {phase1_pdf_data.number_of_pages})"
         connection.execute (query)
 
-        if phase1_row.priority_deals_section.number_of_pages > 0:
-            query = f"insert into {self.PRIORITY_DEALS_TABLE} values({phase1_row.file_key}, {phase1_row.priority_deals_section.number_of_pages}, '{str(phase1_row.priority_deals_section.page_list)}')"
-            connection.execute (query)
-
-        if phase1_row.new_deals_section.number_of_pages > 0:
-            query = f"insert into {self.NEW_DEALS_TABLE} values({phase1_row.file_key}, {phase1_row.new_deals_section.number_of_pages}, '{str(phase1_row.new_deals_section.page_list)}')"
-            connection.execute (query)
-
-        if phase1_row.other_deals_section.number_of_pages > 0:
-            query = f"insert into {self.OTHER_DEALS_TABLE} values({phase1_row.file_key}, {phase1_row.other_deals_section.number_of_pages}, '{str(phase1_row.other_deals_section.page_list)}')"
-            connection.execute (query)
-
-        if phase1_row.activate_potential_section.number_of_pages > 0:
-            query = f"insert into {self.ACTIVATE_POTENTIAL_TABLE} values({phase1_row.file_key}, {phase1_row.activate_potential_section.number_of_pages}, '{str(phase1_row.activate_potential_section.page_list)}')"
-            connection.execute (query)
-
-        if phase1_row.commercial_partnership_section.number_of_pages > 0:
-            query = f"insert into {self.COMMERCIAL_PARTNERSHIP_TABLE} values({phase1_row.file_key}, {phase1_row.commercial_partnership_section.number_of_pages}, '{str(phase1_row.commercial_partnership_section.page_list)}')"
-            connection.execute (query)
-
-        if phase1_row.pass_track_deals_section.number_of_pages > 0:
-            query = f"insert into {self.PASS_TRACK_DEALS_TABLE} values({phase1_row.file_key}, {phase1_row.pass_track_deals_section.number_of_pages}, '{str(phase1_row.pass_track_deals_section.page_list)}')"
-            connection.execute (query)
+        phase1_pdf_data.priority_deals_section.save (connection, self.PHASE1_TABLE_DEALS, phase1_pdf_data.file_key)
+        phase1_pdf_data.new_deals_section.save (connection, self.PHASE1_TABLE_DEALS, phase1_pdf_data.file_key)
+        phase1_pdf_data.other_deals_section.save (connection, self.PHASE1_TABLE_DEALS, phase1_pdf_data.file_key)
+        phase1_pdf_data.activate_potential_section.save (connection, self.PHASE1_TABLE_DEALS, phase1_pdf_data.file_key)
+        phase1_pdf_data.commercial_partnership_section.save (connection, self.PHASE1_TABLE_DEALS, phase1_pdf_data.file_key)
+        phase1_pdf_data.pass_track_deals_section.save (connection, self.PHASE1_TABLE_DEALS, phase1_pdf_data.file_key)
 
         connection.close ()
 

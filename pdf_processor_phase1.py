@@ -1,5 +1,6 @@
 import time
 import datetime
+import re
 from pypdf import PdfReader
 from pathlib import Path
 from pypdf import PdfReader
@@ -33,12 +34,12 @@ class PdfProcessorPhase1 ():
         self.subject = ""
         self.title = ""
         self.number_of_pages = 0
-        self.priority_deals = DealsSection ("Priority Deal")
-        self.new_deals = DealsSection ("New Deal")
-        self.other_deals = DealsSection ("Other Deal")
-        self.activate_potential = DealsSection ("Activate Potential")
-        self.commercial_partnership = DealsSection ("Commercial Partnership")
-        self.pass_track_deals = DealsSection ("Pass Track Deal")
+        self.priority_deals = DealsSection ("Priority_Deal")
+        self.new_deals = DealsSection ("New_Deal")
+        self.other_deals = DealsSection ("Other_Deal")
+        self.activate_potential = DealsSection ("Activate_Potential")
+        self.commercial_partnership = DealsSection ("Commercial_Partnership")
+        self.pass_track_deals = DealsSection ("Pass_Track_Deal")
 
         self.page_text_dict = {}
 
@@ -73,6 +74,7 @@ class PdfProcessorPhase1 ():
         print (f"Extracted page text in {time_end - time_start:0.4f} seconds")
 
     def process_for_deals_section (self, deals_section, check_text, page_text, page_number):
+        processed = False
         if (deals_section.first_page == 0):
             if check_text in page_text:
                 deals_section.first_page = page_number
@@ -83,11 +85,16 @@ class PdfProcessorPhase1 ():
 
                 deals_section.number_of_pages = int (page_text[open_bracket_position + 6:close_bracket_position])
                 deals_section.page_list.append (page_number)
-        else:
+                processed = True
+        elif deals_section.number_of_pages > len (deals_section.page_list):
             search_page = len (deals_section.page_list) + 1
-            search_text = f"{search_page} of {deals_section.number_of_pages}"
-            if self.text_in_page (search_text, page_text):
+            search_text = f"{search_page}[ ]*of[ ]*{deals_section.number_of_pages}"
+
+            # [old] if self.text_in_page (search_text, page_text):
+            if re.search (search_text, page_text):
                 deals_section.page_list.append (page_number)
+                processed = True
+        return processed
 
     def process_for_deals_section_2 (self, deals_section, check_text1, check_text2, page_text, page_number):
         processed = False
@@ -127,17 +134,19 @@ class PdfProcessorPhase1 ():
 
         for page_number in self.page_text_dict:
             page_text = self.page_text_dict[page_number]
-            processed = self.process_for_deals_section_2 (self.priority_deals, self.PRIORITY_ACTIVE_DEALS1, self.ACTIVE_DEALS1, page_text, page_number)
+            processed = self.process_for_deals_section (self.priority_deals, self.PRIORITY_ACTIVE_DEALS1, page_text, page_number)
             if False == processed:
-                self.process_for_deals_section (self.new_deals, self.NEW_ACTIVE_DEALS1, page_text, page_number)
+                processed = self.process_for_deals_section (self.new_deals, self.NEW_ACTIVE_DEALS1, page_text, page_number)
             if False == processed:
-                self.process_for_deals_section (self.other_deals, self.OTHER_ACTIVE_DEALS1, page_text, page_number)
+                processed = self.process_for_deals_section (self.other_deals, self.OTHER_ACTIVE_DEALS1, page_text, page_number)
+            if False == processed: # if not PRIORITY, NEW, or OTHER, but just ACTIVE_DEAL then process as a Priority Deal
+                processed = self.process_for_deals_section (self.priority_deals, self.ACTIVE_DEALS1, page_text, page_number)
             if False == processed:
-                self.process_for_deals_section (self.activate_potential, self.ACTIVATE_COMPANIES1, page_text, page_number)
+                processed = self.process_for_deals_section (self.activate_potential, self.ACTIVATE_COMPANIES1, page_text, page_number)
             if False == processed:
-                self.process_for_deals_section (self.commercial_partnership, self.COMMERCIAL_PARTNERSHIP, page_text, page_number)
+                processed = self.process_for_deals_section (self.commercial_partnership, self.COMMERCIAL_PARTNERSHIP, page_text, page_number)
             if False == processed:
-                self.process_for_deals_section (self.pass_track_deals, self.PASS_TRACK_DEALS1, page_text, page_number)
+                processed = self.process_for_deals_section (self.pass_track_deals, self.PASS_TRACK_DEALS1, page_text, page_number)
 
         time_end = time.perf_counter ()
         print (f"Extracted deal pages in {time_end - time_start:0.4f} seconds")

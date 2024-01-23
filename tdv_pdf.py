@@ -43,17 +43,20 @@ if __name__ == '__main__':
     tdv_pdf.process_arguments ()
 
 #    path = 'D:/Deepak/source/learn-python/tdv_pdf/test2.pdf'
-#    path1 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 030222 vF.pdf"
-    path2 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011223 vF.pdf"
+    path1 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 030222 vF.pdf"
+    path2 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 020123 vF.pdf"
+    path3 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 012721 vF.pdf"
     dir_path = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly"
 
     directory = os.fsencode (dir_path)
 
-    tdv_pdf.process_phase1 (path2)
+    # tdv_pdf.process_phase1 (path1)
+    # tdv_pdf.process_phase1 (path2)
+
 #    tdv_pdf.process_phase2 (path1)
 
-    # for file in os.listdir (directory):
-    #     filename = os.fsdecode (file)
-    #     filepath = f"{dir_path}/{filename}"
-    #     if filename.endswith (".pdf"):
-    #         tdv_pdf.process_phase1 (filepath)
+    for file in os.listdir (directory):
+        filename = os.fsdecode (file)
+        filepath = f"{dir_path}/{filename}"
+        if filename.endswith (".pdf"):
+            tdv_pdf.process_phase1 (filepath)
