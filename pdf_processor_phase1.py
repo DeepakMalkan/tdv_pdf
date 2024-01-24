@@ -34,12 +34,12 @@ class PdfProcessorPhase1 ():
         self.subject = ""
         self.title = ""
         self.number_of_pages = 0
-        self.priority_deals = DealsSection ("Priority_Deal")
-        self.new_deals = DealsSection ("New_Deal")
-        self.other_deals = DealsSection ("Other_Deal")
-        self.activate_potential = DealsSection ("Activate_Potential")
-        self.commercial_partnership = DealsSection ("Commercial_Partnership")
-        self.pass_track_deals = DealsSection ("Pass_Track_Deal")
+        self.priority_deals = DealsSection ("Priority_Deals")
+        self.new_deals = DealsSection ("New_Deals")
+        self.other_deals = DealsSection ("Other_Deals")
+        self.activate_potential = DealsSection ("Activate_Potentials")
+        self.commercial_partnership = DealsSection ("Commercial_Partnerships")
+        self.pass_track_deals = DealsSection ("Pass_Track_Deals")
 
         self.page_text_dict = {}
 
