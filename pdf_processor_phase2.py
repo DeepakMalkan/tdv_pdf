@@ -24,7 +24,7 @@ class DealsSectionFrames ():
     ACTIVE_DEALS = "Active Deals"
     NEW_ACTIVE_DEALS = "New Active Deals"
     OTHER_ACTIVE_DEALS = "Other Active Deals"
-    CURRENT_ACTIVATE_COMPANIES = "Current iTwin Activate Companies"
+    ACTIVATE_COMPANIES = "iTwin Activate Companies"
     COMMERCIAL_PARTNERSHIP = "Commercial Partnership Opportunities"
     PASS_TRACK_DEALS = "Pass/ Track Deals"
 
@@ -52,36 +52,39 @@ class DealsSectionFrames ():
         for company_data in self.company_list:
             company_data.print ()
 
-    def process_one_company_data (self, deal_type, overall_data_list, start_index, process_short):
-        company_dict = overall_data_list[start_index][0]
+    def process_one_company_data_main (self, deal_type, overall_data_list, list_index):
+        company_dict = overall_data_list[list_index][0]
         company_text = company_dict["text"]
 
         if "" == company_text:
             return
-        if "Touchdown" in company_text:
-            # Do not process Touchdown Ventures as a company
-            return
 
         company_text_partition = company_text.partition ("\r")
         company_name = company_text_partition[0]
+        if "" == company_name:
+            return
+        if "Touchdown" in company_name:
+            # Do not process Touchdown Ventures as a company
+            return
+
         company_data = CompanyData (company_name, deal_type, self.file_key)
         self.company_list.append (company_data)
 
         company_data.attributes_dict[CompanyData.DETAILS_KEY] = simplify_text_in_string (company_text)
 
-        description_dict = overall_data_list[start_index][1]
+        description_dict = overall_data_list[list_index][1]
         description_text, next_step_text = process_description (description_dict["text"])
         company_data.attributes_dict[CompanyData.DESCRIPTION_KEY] = simplify_text_in_string (description_text)
         company_data.next_step = next_step_text
 
-        stage_funding_dict = overall_data_list[start_index][2]
+        stage_funding_dict = overall_data_list[list_index][2]
         stage_funding_text = stage_funding_dict["text"]
         company_data.attributes_dict[CompanyData.STAGE_FUNDING_KEY] = simplify_text_in_string (stage_funding_text)
 
-        if process_short == True:
-            return company_data
+        return company_data
 
-        team_etc_list = overall_data_list[start_index + 1]
+    def process_one_company_data_secondary (self, company_data, overall_data_list, list_index):
+        team_etc_list = overall_data_list[list_index]
         for dict_item in team_etc_list:
             title_text = dict_item["text"]
             title_text_partition = dict_item["text"].partition ("\r")
@@ -105,24 +108,23 @@ class DealsSectionFrames ():
         return company_data
 
     def process_two_companies_per_page (self, deal_type, overall_data_list):
-        self.process_one_company_data (deal_type, overall_data_list, 2, False)
-
-        # There can be upto two companies listed per page.
-        # The heuristic is that if overall_data_list is < 7 then there is only one company
-        if len (overall_data_list) < 7:
-            return
+        company_data = self.process_one_company_data_main (deal_type, overall_data_list, 2)
+        if company_data != None:
+            company_data = self.process_one_company_data_secondary (company_data, overall_data_list, 3)
 
         # process the second company data
-        self.process_one_company_data (deal_type, overall_data_list, 4, False)
+        self.process_one_company_data_main (deal_type, overall_data_list, 4)
+        if company_data != None:
+            company_data = self.process_one_company_data_secondary (company_data, overall_data_list, 5)
 
     def process_three_companies_per_page (self, deal_type, overall_data_list):
-        self.process_one_company_data (deal_type, overall_data_list, 2, True)
+        self.process_one_company_data_main (deal_type, overall_data_list, 2)
 
         # process the second company data
-        self.process_one_company_data (deal_type, overall_data_list, 3, True)
+        self.process_one_company_data_main (deal_type, overall_data_list, 3)
 
         # process the third company data
-        self.process_one_company_data (deal_type, overall_data_list, 4, True)
+        self.process_one_company_data_main (deal_type, overall_data_list, 4)
 
     def process_company_data (self):
         for key in self.data_frame_dict:
@@ -147,7 +149,7 @@ class DealsSectionFrames ():
             elif DealsSectionFrames.ACTIVE_DEALS in page_title:
                 deal_type = DealsSection.PRIORITY_DEALS_TYPE
                 process_per_page = 2
-            elif DealsSectionFrames.CURRENT_ACTIVATE_COMPANIES in page_title:
+            elif DealsSectionFrames.ACTIVATE_COMPANIES in page_title:
                 deal_type = DealsSection.ACTIVATE_POTENTIAL_TYPE
                 process_per_page = 3
             elif DealsSectionFrames.COMMERCIAL_PARTNERSHIP in page_title:

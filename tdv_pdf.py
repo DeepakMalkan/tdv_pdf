@@ -35,7 +35,7 @@ class TdvPdf ():
             pdf_processor_phase2 = PdfProcessorPhase2 (path)
             pdf_processor_phase2.load_phase1_pdf_data ()
             pdf_processor_phase2.read_pdf_deal_pages ()
-            # pdf_processor_phase2.write_deals_data ()
+            pdf_processor_phase2.write_deals_data ()
             pdf_processor_phase2.process_company_data ()
             pdf_processor_phase2.save_company_data ()
             pdf_processor_phase2.print_company_data ()
@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
 #    path = 'D:/Deepak/source/learn-python/tdv_pdf/test2.pdf'
     path1 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 030222 vF.pdf"
-    path2 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 020123 vF.pdf"
+    path2 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011223 vF.pdf"
     path3 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 012721 vF.pdf"
     path4 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 101922 vF.pdf"
     dir_path1 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly"
@@ -55,8 +55,10 @@ if __name__ == '__main__':
 
     directory = os.fsencode (dir_path2)
 
-    # tdv_pdf.process_phase1 (path4)
     # tdv_pdf.process_phase1 (path2)
+    # tdv_pdf.process_phase1 (path4)
+
+    tdv_pdf.process_phase2 (path4)
 
     # for file in os.listdir (directory):
     #     filename = os.fsdecode (file)
@@ -64,4 +66,3 @@ if __name__ == '__main__':
     #     if filename.endswith (".pdf"):
     #         tdv_pdf.process_phase1 (filepath)
 
-    tdv_pdf.process_phase2 (path4)

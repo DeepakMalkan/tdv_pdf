@@ -18,7 +18,7 @@ class PdfProcessorPhase1 ():
     NEW_ACTIVE_DEALS1 = "New Active Deals (1"
     OTHER_ACTIVE_DEALS1 = "Other Active Deals (1"
     CURRENT_ACTIVATE_COMPANIES1 = "Current iTwin Activate Companies (1"
-    ACTIVATE_COMPANIES1 = "Current iTwin Activate Companies (1"
+    ACTIVATE_COMPANIES1 = "iTwin Activate Companies (1"
     COMMERCIAL_PARTNERSHIP = "Commercial Partnership Opportunities (1"
     PASS_TRACK_DEALS1 = "Pass/ Track Deals (1"
 
@@ -68,16 +68,16 @@ class PdfProcessorPhase1 ():
                 start_index_position = page_text.find (check_text)
 
                 open_bracket_position = page_text.find ('(', start_index_position)
+                of_position = page_text.find ('of', start_index_position)
                 close_bracket_position = page_text.find (')', open_bracket_position)
 
-                deals_section.number_of_pages = int (page_text[open_bracket_position + 6:close_bracket_position])
+                deals_section.number_of_pages = int (page_text[of_position + 2:close_bracket_position])
                 deals_section.page_list.append (page_number)
                 processed = True
         elif deals_section.number_of_pages > len (deals_section.page_list):
             search_page = len (deals_section.page_list) + 1
             search_text = f"{search_page}[ ]*of[ ]*{deals_section.number_of_pages}"
 
-            # [old] if self.text_in_page (search_text, page_text):
             if re.search (search_text, page_text):
                 deals_section.page_list.append (page_number)
                 processed = True
@@ -118,6 +118,7 @@ class PdfProcessorPhase1 ():
     def extract_deals_pages (self):
         time_start = time.perf_counter ()
 
+        activate_potential_processed = False
         for page_number in self.page_text_dict:
             page_text = self.page_text_dict[page_number]
             processed = self.process_for_deals_section (self.priority_deals, PdfProcessorPhase1.PRIORITY_ACTIVE_DEALS1, page_text, page_number)
@@ -129,12 +130,18 @@ class PdfProcessorPhase1 ():
                 processed = self.process_for_deals_section (self.priority_deals, PdfProcessorPhase1.ACTIVE_DEALS1, page_text, page_number)
             if False == processed:
                 processed = self.process_for_deals_section (self.activate_potential, PdfProcessorPhase1.CURRENT_ACTIVATE_COMPANIES1, page_text, page_number)
-            if False == processed:
-                processed = self.process_for_deals_section (self.activate_potential, PdfProcessorPhase1.ACTIVATE_COMPANIES1, page_text, page_number)
+                if processed:
+                    activate_potential_processed = True
             if False == processed:
                 processed = self.process_for_deals_section (self.commercial_partnership, PdfProcessorPhase1.COMMERCIAL_PARTNERSHIP, page_text, page_number)
             if False == processed:
                 processed = self.process_for_deals_section (self.pass_track_deals, PdfProcessorPhase1.PASS_TRACK_DEALS1, page_text, page_number)
+
+        # if Activate Potential Pages not found with CURRENT_ACTIVATE_COMPANIES1 token, then try to find with ACTIVATE_COMPANIES1 token
+        if activate_potential_processed == False:
+            for page_number in self.page_text_dict:
+                page_text = self.page_text_dict[page_number]
+                self.process_for_deals_section (self.activate_potential, PdfProcessorPhase1.ACTIVATE_COMPANIES1, page_text, page_number)
 
         time_end = time.perf_counter ()
         print (f"Extracted deal pages in {time_end - time_start:0.4f} seconds")
