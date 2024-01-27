@@ -9,56 +9,43 @@ from sqlite_processor import Phase1PdfData
 from sqlite_processor import DealsSection
 
 class PdfProcessorPhase1 ():
-    """A class that processes the first phase of the Pdf data"""
-    """In this phase we identify all pages associated with Priority Active / Active / Other Active Deals"""
+    """A class that processes the first phase of the data of a single PDF file"""
+    """In this phase we identify all pages associated with Priority Active / Active / Other Active Deals / etc. """
     """The pages thus identified are stored in an sqlite db file"""
+
+    PRIORITY_ACTIVE_DEALS1 = "Priority Active Deals (1"
+    ACTIVE_DEALS1 = "Active Deals (1"
+    NEW_ACTIVE_DEALS1 = "New Active Deals (1"
+    OTHER_ACTIVE_DEALS1 = "Other Active Deals (1"
+    CURRENT_ACTIVATE_COMPANIES1 = "Current iTwin Activate Companies (1"
+    ACTIVATE_COMPANIES1 = "Current iTwin Activate Companies (1"
+    COMMERCIAL_PARTNERSHIP = "Commercial Partnership Opportunities (1"
+    PASS_TRACK_DEALS1 = "Pass/ Track Deals (1"
 
     def __init__ (self, path) -> None:
         super ().__init__ ()
 
-        self.PRIORITY_ACTIVE_DEALS1 = "Priority Active Deals (1"
-        self.ACTIVE_DEALS1 = "Active Deals (1"
-        self.NEW_ACTIVE_DEALS1 = "New Active Deals (1"
-        self.OTHER_ACTIVE_DEALS1 = "Other Active Deals (1"
-        self.ACTIVATE_COMPANIES1 = "Current iTwin Activate Companies (1"
-        self.COMMERCIAL_PARTNERSHIP = "Commercial Partnership Opportunities (1"
-        self.PASS_TRACK_DEALS1 = "Pass/ Track Deals (1"
-
         self.path = path
-        self.basepath = ""
+        self.basepath, self.file_key = Phase1Db.generate_basepath_and_file_key (self.path)
+
         self.reader = PdfReader (path)
 
-        self.author = ""
-        self.creator = ""
-        self.producer = ""
-        self.subject = ""
-        self.title = ""
-        self.number_of_pages = 0
-        self.priority_deals = DealsSection ("Priority_Deals")
-        self.new_deals = DealsSection ("New_Deals")
-        self.other_deals = DealsSection ("Other_Deals")
-        self.activate_potential = DealsSection ("Activate_Potentials")
-        self.commercial_partnership = DealsSection ("Commercial_Partnerships")
-        self.pass_track_deals = DealsSection ("Pass_Track_Deals")
-
-        self.page_text_dict = {}
-
-    def extract_date_from_path (self):
-        '''The path file-name contains a date that we need to extract for provenance purposes'''
-        '''For example, the path's file name is for the format: "Bentley Biweekly 011222 vF.pdf". We need to extract 011222 in format mmddyy'''
-        splitpath = self.path.rsplit ("/", 1)
-        self.basepath = splitpath[1]
-        extracted_date = self.basepath[17:23]
-        self.yymmdd_date = extracted_date[4:6]+extracted_date[0:2]+extracted_date[2:4]
-
-    def extract_information (self):
         metadata = self.reader.metadata
-
         self.author = metadata.author
         self.creator = metadata.creator
         self.subject = metadata.subject
         self.title = metadata.title
         self.number_of_pages = len (self.reader.pages)
+
+        self.priority_deals = DealsSection.CreatePriorityDealsSection ()
+        self.new_deals = DealsSection.CreateNewDealsSection ()
+        self.other_deals = DealsSection.CreateOtherDealsSection ()
+        self.activate_potential = DealsSection.CreateActivatePotentialSection ()
+        self.commercial_partnership = DealsSection.CreateCommercialPartnershipsSection ()
+        self.pass_track_deals = DealsSection.CreatePassTrackDealsSection ()
+        self.deals_section_list = [self.priority_deals, self.new_deals, self.other_deals, self.activate_potential, self.commercial_partnership, self.pass_track_deals]
+
+        self.page_text_dict = {}
 
     def extract_page_text (self):
         time_start = time.perf_counter ()
@@ -119,7 +106,6 @@ class PdfProcessorPhase1 ():
                 processed = True
         return processed
 
-
     def text_in_page (self, search_text, page_text):
         if (search_text in page_text):
             return True
@@ -134,56 +120,47 @@ class PdfProcessorPhase1 ():
 
         for page_number in self.page_text_dict:
             page_text = self.page_text_dict[page_number]
-            processed = self.process_for_deals_section (self.priority_deals, self.PRIORITY_ACTIVE_DEALS1, page_text, page_number)
+            processed = self.process_for_deals_section (self.priority_deals, PdfProcessorPhase1.PRIORITY_ACTIVE_DEALS1, page_text, page_number)
             if False == processed:
-                processed = self.process_for_deals_section (self.new_deals, self.NEW_ACTIVE_DEALS1, page_text, page_number)
+                processed = self.process_for_deals_section (self.new_deals, PdfProcessorPhase1.NEW_ACTIVE_DEALS1, page_text, page_number)
             if False == processed:
-                processed = self.process_for_deals_section (self.other_deals, self.OTHER_ACTIVE_DEALS1, page_text, page_number)
+                processed = self.process_for_deals_section (self.other_deals, PdfProcessorPhase1.OTHER_ACTIVE_DEALS1, page_text, page_number)
             if False == processed: # if not PRIORITY, NEW, or OTHER, but just ACTIVE_DEAL then process as a Priority Deal
-                processed = self.process_for_deals_section (self.priority_deals, self.ACTIVE_DEALS1, page_text, page_number)
+                processed = self.process_for_deals_section (self.priority_deals, PdfProcessorPhase1.ACTIVE_DEALS1, page_text, page_number)
             if False == processed:
-                processed = self.process_for_deals_section (self.activate_potential, self.ACTIVATE_COMPANIES1, page_text, page_number)
+                processed = self.process_for_deals_section (self.activate_potential, PdfProcessorPhase1.CURRENT_ACTIVATE_COMPANIES1, page_text, page_number)
             if False == processed:
-                processed = self.process_for_deals_section (self.commercial_partnership, self.COMMERCIAL_PARTNERSHIP, page_text, page_number)
+                processed = self.process_for_deals_section (self.activate_potential, PdfProcessorPhase1.ACTIVATE_COMPANIES1, page_text, page_number)
             if False == processed:
-                processed = self.process_for_deals_section (self.pass_track_deals, self.PASS_TRACK_DEALS1, page_text, page_number)
+                processed = self.process_for_deals_section (self.commercial_partnership, PdfProcessorPhase1.COMMERCIAL_PARTNERSHIP, page_text, page_number)
+            if False == processed:
+                processed = self.process_for_deals_section (self.pass_track_deals, PdfProcessorPhase1.PASS_TRACK_DEALS1, page_text, page_number)
 
         time_end = time.perf_counter ()
         print (f"Extracted deal pages in {time_end - time_start:0.4f} seconds")
 
     def check_data (self):
-        self.priority_deals.check_data ()
-        self.new_deals.check_data ()
-        self.other_deals.check_data ()
-        self.activate_potential.check_data ()
-        self.commercial_partnership.check_data ()
-        self.pass_track_deals.check_data ()
+        for deals_section in self.deals_section_list:
+            deals_section.check_data ()
 
     def save (self):
         phase1_db = Phase1Db ()
-        phase1_pdf_data = Phase1PdfData (self.yymmdd_date, self.basepath, self.number_of_pages, self.priority_deals, self.new_deals, self.other_deals, self.activate_potential, self.commercial_partnership, self.pass_track_deals)
+        phase1_pdf_data = Phase1PdfData (self.file_key, self.basepath, self.number_of_pages, self.deals_section_list)
         phase1_db.save (phase1_pdf_data)
 
     def print_info (self):
         print (f"Path = {self.path}")
         print (f"Base Path = {self.basepath}")
-        print (f"File Date = {self.yymmdd_date}")
+        print (f"File Key = {self.file_key}")
         print (f"Author = {self.author}")
         print (f"Creator = {self.creator}")
         print (f"Subject = {self.subject}")
         print (f"Title = {self.title}")
         print (f"Number of Pages = {self.number_of_pages}")
-        self.priority_deals.print ()
-        self.new_deals.print ()
-        self.other_deals.print ()
-        self.activate_potential.print ()
-        self.commercial_partnership.print ()
-        self.pass_track_deals.print ()
+        for deals_section in self.deals_section_list:
+            deals_section.print ()
 
     def process (self):
-        self.extract_date_from_path ()
-
-        self.extract_information ()
         self.extract_page_text ()
         self.extract_deals_pages ()
 
