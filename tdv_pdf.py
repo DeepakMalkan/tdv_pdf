@@ -36,9 +36,9 @@ class TdvPdf ():
             pdf_processor_phase2.load_phase1_pdf_data ()
             pdf_processor_phase2.read_pdf_deal_pages ()
             pdf_processor_phase2.write_deals_data ()
-            pdf_processor_phase2.process_company_data ()
-            pdf_processor_phase2.save_company_data ()
-            pdf_processor_phase2.print_company_data ()
+            # pdf_processor_phase2.process_company_data ()
+            # pdf_processor_phase2.save_company_data ()
+            # pdf_processor_phase2.print_company_data ()
 
 """Main entry point to handling TDV PDF files."""
 if __name__ == '__main__':
@@ -53,16 +53,15 @@ if __name__ == '__main__':
     dir_path1 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly"
     dir_path2 = "D:/Deepak/Personal/Bentley Biweekly"
 
-    directory = os.fsencode (dir_path2)
-
-    # tdv_pdf.process_phase1 (path2)
+    # tdv_pdf.process_phase1 (path3)
     # tdv_pdf.process_phase1 (path4)
 
-    tdv_pdf.process_phase2 (path4)
+    # tdv_pdf.process_phase2 (path4)
 
-    # for file in os.listdir (directory):
-    #     filename = os.fsdecode (file)
-    #     filepath = f"{dir_path2}/{filename}"
-    #     if filename.endswith (".pdf"):
-    #         tdv_pdf.process_phase1 (filepath)
+    directory = os.fsencode (dir_path2)
+    for file in os.listdir (directory):
+        filename = os.fsdecode (file)
+        filepath = f"{dir_path2}/{filename}"
+        if filename.endswith (".pdf"):
+            tdv_pdf.process_phase1 (filepath)
 
