@@ -8,8 +8,10 @@ from pypdf import PdfReader
 class PdfInfo ():
     """A class that holds key information about the pdf file"""
 
-    def __init__ (self):
+    def __init__ (self, path):
         super ().__init__ ()
+
+        self.file_path = path
 
         self.author = ""
         self.creator = ""
@@ -46,7 +48,7 @@ class PdfInfo ():
             elif text == other_active_deals:
                 self.priority_active_deals_end = page_number
                 self.other_active_deals_start = page_number
-            elif self.other_active_deals_start > 0 & self.other_active_deals_end == 0:
+            elif self.other_active_deals_start > 0 and self.other_active_deals_end == 0:
                 if commercial_partnership in text:
                     self.other_active_deals_end = page_number
 
@@ -81,7 +83,7 @@ class PriorityActiveDeals ():
         basepath = pdfProcessor.path.rsplit ("/", 1)
 
         for key in self.data_frame_dict:
-            outputfile = f"{basepath[0]}/json/{key}.json"
+            outputfile = f"{basepath[0]}/tmpdata/{key}.json"
             with open (outputfile, "w") as text_file:
                 data_frame = self.data_frame_dict[key]
                 text_file.write (json.dumps (data_frame[0]))
@@ -121,7 +123,7 @@ class PriorityActiveDeals ():
                 elif title_text[0] == "Strategic Synergies":
                     print (f"Stratigic Synergies Title = {title_text[0]}")
 
-            if len (overall_data_list) < 8:
+            if len (overall_data_list) < 7:
                 continue
 
             company_dict = overall_data_list[4][0]
@@ -151,7 +153,7 @@ class PdfProcessor ():
         self.path = path
         self.reader = PdfReader (path)
 
-        self.pdf_info = PdfInfo ()
+        self.pdf_info = PdfInfo (path)
         self.priority_active_deals = PriorityActiveDeals ()
 
     def extract_information (self):
@@ -170,7 +172,7 @@ class PdfProcessor ():
 
         page_json_dict = {}
         for page_number in range (start + 1, end):
-            page_data_frame = tabula.read_pdf (path, lattice=True, pages=page_number, output_format="json")
+            page_data_frame = tabula.read_pdf (self.path, lattice=True, pages=page_number, output_format="json")
 
             key = f"{basename}_{prefix}_{page_number}"
             page_json_dict[key] = page_data_frame
@@ -182,17 +184,3 @@ class PdfProcessor ():
 
     def extract_priority_active_deals_data (self):
         self.priority_active_deals.extract_data_frame (self)
-
-if __name__ == '__main__':
-#    path = 'C:\Users\Deepak.Malkan\OneDrive - Bentley Systems, Inc\Documents\iTwin Ventures\Biweekly\Bentley Biweekly 121323 vF.pdf'
-    path = 'D:/Deepak/source/learn-python/tdv_pdf/test2.pdf'
-
-    pdf_processor = PdfProcessor (path)
-    pdf_processor.extract_information ()
-    pdf_processor.extract_sections ()
-
-    pdf_processor.print_info ()
-
-    pdf_processor.extract_priority_active_deals_data ()
-    pdf_processor.write_priority_active_deals_data ()
-    pdf_processor.priority_active_deals.extract_key_strings ()
