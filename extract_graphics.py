@@ -32,7 +32,7 @@ for path in paths:
     # ------------------------------------
     item_index = 0
     for item in path["items"]:  # these are the draw commands
-        print (f"Item_index = {path_index}:{item_index}")
+        print (f"   Item_index = {path_index}:{item_index}")
         item_index = item_index + 1
         if item[0] == "l":  # line
             start_point = item[1]
@@ -51,7 +51,7 @@ for path in paths:
                 start_point.x = start_point.x + offset
                 end_point.x = end_point.x - offset
 
-            print (f"Line {line_index}, fill_color {fill_color}, start point = {start_point}, end point = {end_point}")
+            print (f"       Line {line_index}, start point = {start_point}, end point = {end_point}")
             shape.draw_line(start_point, end_point)
 
             text_point = fitz.Point ()
@@ -92,7 +92,7 @@ for path in paths:
                     text_point.x = (top_left.x + bottom_right.x) / 2
                     text_point.y = (top_left.y + bottom_right.y) / 2
                     text = f"R{rect_index}"
-                    print (f"Rectangle {rect_index}, fill_color {fill_color}, top_left = {top_left}, bottom_right = {bottom_right}")
+                    print (f"Rectangle {rect_index}, top_left = {top_left}, bottom_right = {bottom_right}")
                     shape.insert_text (text_point, text)
                     rect_index += 1
         elif item[0] == "qu":  # quad
@@ -106,7 +106,7 @@ for path in paths:
     # to finish the path
     # ------------------------------------------------------
     shape.finish (
-        fill = path["fill"],
+        # fill = path["fill"],
         color=path["color"],
     )
 
