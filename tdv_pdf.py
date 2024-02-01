@@ -50,18 +50,19 @@ if __name__ == '__main__':
     path2 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011223 vF.pdf"
     path3 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 012721 vF.pdf"
     path4 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 101922 vF.pdf"
+    path5 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 050422 vF.pdf"
     dir_path1 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly"
     dir_path2 = "D:/Deepak/Personal/Bentley Biweekly"
 
-    # tdv_pdf.process_phase1 (path3)
+    tdv_pdf.process_phase1 (path5)
     # tdv_pdf.process_phase1 (path4)
 
     # tdv_pdf.process_phase2 (path4)
 
-    directory = os.fsencode (dir_path2)
-    for file in os.listdir (directory):
-        filename = os.fsdecode (file)
-        filepath = f"{dir_path2}/{filename}"
-        if filename.endswith (".pdf"):
-            tdv_pdf.process_phase1 (filepath)
+    # directory = os.fsencode (dir_path2)
+    # for file in os.listdir (directory):
+    #     filename = os.fsdecode (file)
+    #     filepath = f"{dir_path2}/{filename}"
+    #     if filename.endswith (".pdf"):
+    #         tdv_pdf.process_phase1 (filepath)
 

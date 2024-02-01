@@ -1,13 +1,10 @@
 import time
-import datetime
 import re
 from extract_blocks import PdfBlockGenerator
 from pypdf import PdfReader
-from pathlib import Path
-from pypdf import PdfReader
 from sqlite_processor import Phase1Db
 from sqlite_processor import Phase1PdfData
-from sqlite_processor import DealsSection
+from deals_section import DealsSection
 
 class PdfProcessorPhase1 ():
     """A class that processes the first phase of the data of a single PDF file"""
@@ -158,21 +155,21 @@ class PdfProcessorPhase1 ():
 
     def extract_blocks (self):
         if self.file_key <= '220706':
-            priority_expected_factor = 3
+            deals_expected_factor = 3
         else:
-            priority_expected_factor = 7
+            deals_expected_factor = 7
 
         out_path ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata"
         block_generator = PdfBlockGenerator ()
         if self.priority_deals.number_of_pages > 0:
             out_file = f"{out_path}/priority_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Priority", self.priority_deals.page_list, out_file, priority_expected_factor)
+            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Priority", self.priority_deals.page_list, out_file, deals_expected_factor)
         if self.new_deals.number_of_pages > 0:
             out_file = f"{out_path}/new_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:New", self.new_deals.page_list, out_file, priority_expected_factor)
+            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:New", self.new_deals.page_list, out_file, deals_expected_factor)
         if self.other_deals.number_of_pages > 0:
             out_file = f"{out_path}/other_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Other", self.other_deals.page_list, out_file, priority_expected_factor)
+            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Other", self.other_deals.page_list, out_file, deals_expected_factor)
         if self.activate_potential.number_of_pages > 0:
             out_file = f"{out_path}/activate_{self.basepath}"
             block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Activate", self.activate_potential.page_list, out_file, 3)
@@ -203,4 +200,4 @@ class PdfProcessorPhase1 ():
         self.save ()
 
         self.check_data ()
-        # self.print_info ()
+        self.print_info ()
