@@ -3,8 +3,10 @@ import fitz
 inpath1 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 111723 vF.pdf"
 inpath2 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011222 vF.pdf"
 inpath3 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011223 vF.pdf"
-doc = fitz.open(inpath3)
-page = doc[20]
+inpath4 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 030222 vF.pdf"
+
+doc = fitz.open(inpath4)
+page = doc[23]
 paths = page.get_drawings()  # extract existing drawings
 # this is a list of "paths", which can directly be drawn again using Shape
 # -------------------------------------------------------------------------
@@ -67,6 +69,13 @@ for path in paths:
             if bottom_right.y - top_left.y < 5:
                 print ("Small horizontal rectangle")
                 shape.draw_line(rect.top_left, rect.bottom_right)
+                print (f"       Horizontal Rectangle {rect_index}, start point = {rect.top_left}, end point = {rect.bottom_right}")
+                text_point = fitz.Point ()
+                text_point.x = (rect.top_left.x + rect.bottom_right.x) / 2
+                text_point.y = (rect.top_left.y + rect.bottom_right.y) / 2
+                text = f"R{rect_index}"
+                shape.insert_text (text_point, text)
+                rect_index += 1
             elif bottom_right.x - top_left.x < 5:
                 print ("Small vertical rectangle")
             else:
@@ -92,8 +101,8 @@ for path in paths:
                     text_point.x = (top_left.x + bottom_right.x) / 2
                     text_point.y = (top_left.y + bottom_right.y) / 2
                     text = f"R{rect_index}"
-                    print (f"Rectangle {rect_index}, top_left = {top_left}, bottom_right = {bottom_right}")
                     shape.insert_text (text_point, text)
+                    print (f"Rectangle {rect_index}, top_left = {top_left}, bottom_right = {bottom_right}")
                     rect_index += 1
         elif item[0] == "qu":  # quad
             shape.draw_quad(item[1])
@@ -135,4 +144,5 @@ shape.commit()
 outpath1 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 111723.pdf"
 outpath2 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 011222.pdf"
 outpath3 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 011223.pdf"
+outpath4 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 030222.pdf"
 outpdf.save(outpath3)

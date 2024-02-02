@@ -9,23 +9,24 @@ class PdfBlockGenerator ():
     def generate_blocks_for_pages (self, inpath, basepath, pages, outpath, expected_factor):
         pdf_page_list = []
 
-        doc = fitz.open(inpath)
-        outpdf = None
+        indoc = fitz.open(inpath)
+        outdoc = fitz.open ()
         for page_index in pages:
-            page = doc[page_index - 1]
+            doc_page = indoc[page_index - 1]
             deal_page = DealPage (expected_factor)
-            deal_page.generate_blocks_from_rects (page)
+            deal_page.generate_blocks_from_rects (doc_page)
 
             pdf_page_list.append (deal_page)
 
             generated_blocks = deal_page.block_list
             num_genenerated_blocks = len (generated_blocks)
             if num_genenerated_blocks == 0:
-                print (f"NO blocks for page {basepath}:{page_index}, expected_factor {expected_factor}")
+                # print (f"NO blocks for page {basepath}:{page_index}, expected_factor {expected_factor}")
+                path_rects, cross_lines = deal_page.generate_rects_from_path (doc_page)
+
+                deal_page.draw_rects_and_lines (doc_page, page_index, outdoc, path_rects, cross_lines)
             else:
-                if outpdf == None:
-                    outpdf = fitz.open()
-                deal_page.draw_shapes_for_blocks (page, page_index, outpdf)
+                deal_page.draw_shapes_for_blocks (doc_page, page_index, outdoc)
 
             self.expected_factor = deal_page.check_and_update_expected_factor ()
 
@@ -35,10 +36,9 @@ class PdfBlockGenerator ():
                 print (f"MISSING blocks for page {basepath}:{page_index}, expected_factor {expected_factor}, got {len (generated_blocks)}")
                 print (f"Missing Blocks List for page {page_index} = {deal_page.missing_blocks_list}")
 
-        if outpdf != None:
-            outpdf.save(outpath)
+        outdoc.save(outpath)
 
-        doc.close ()
+        indoc.close ()
 
         return pdf_page_list
 
