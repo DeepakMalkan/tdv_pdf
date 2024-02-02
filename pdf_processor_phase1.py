@@ -1,6 +1,6 @@
 import time
 import re
-from extract_blocks import PdfBlockGenerator
+from pdf_block_generator import PdfBlockGenerator
 from pypdf import PdfReader
 from sqlite_processor import Phase1Db
 from sqlite_processor import Phase1PdfData
@@ -154,11 +154,12 @@ class PdfProcessorPhase1 ():
         phase1_db.save (phase1_pdf_data)
 
     def extract_blocks (self):
-        if self.file_key <= '220706':
+        if self.file_key <= '211103':
             deals_expected_factor = 3
         else:
             deals_expected_factor = 7
 
+        # self.priority_deals.generate_blocks (self.path, )
         out_path ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata"
         block_generator = PdfBlockGenerator ()
         if self.priority_deals.number_of_pages > 0:
@@ -200,4 +201,4 @@ class PdfProcessorPhase1 ():
         self.save ()
 
         self.check_data ()
-        self.print_info ()
+        # self.print_info ()
