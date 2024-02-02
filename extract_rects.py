@@ -9,7 +9,7 @@ def generate_rects_for_pages (inpath, outpath, page_number_list):
         doc_page = indoc[page_num]
 
         deal_page = DealPage (3)
-        path_rects, cross_lines = deal_page.generate_rects_from_path (doc_page)
+        path_rects, cross_lines = deal_page.generate_rects_and_crosslines_from_path (doc_page)
         deal_page.draw_rects_and_lines (doc_page, page_num, outdoc, path_rects, cross_lines)
 
     outdoc.save (outpath)
@@ -22,10 +22,16 @@ if __name__ == '__main__':
     inpath2 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011222 vF.pdf"
     inpath3 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011223 vF.pdf"
     inpath4 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 030222 vF.pdf"
+    inpath5 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 031323 vF.pdf"
 
     outpath1 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Rects 111723.pdf"
     outpath2 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Rects 011222.pdf"
     outpath3 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Rects 011223.pdf"
     outpath4 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Rects 030222.pdf"
+    outpath5 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Rects 031323.pdf"
 
-    generate_rects_for_pages (inpath4, outpath4, [23])
+    pages1 = [11]
+    pages3 = [30]
+    pages5 = [20]
+
+    generate_rects_for_pages (inpath3, outpath3, pages3)

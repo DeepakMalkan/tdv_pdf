@@ -5,6 +5,13 @@ DELTA = 5
 def equal (num1, num2):
     return abs (num1 - num2) < DELTA
 
+def number_compare (num1, num2):
+    if num1 - num2 < -DELTA:
+        return -1
+    if num1 - num2 > DELTA:
+        return 1
+    return 0
+
 def rect_compare (rect1, rect2):
     if rect1.y0 - rect2.y0 < -DELTA:
         return -1
@@ -15,6 +22,12 @@ def rect_compare (rect1, rect2):
     if rect1.x0 - rect2.x0 > DELTA:
         return 1
     return 0
+
+def number_in_list (number_list, check_number):
+    for number in number_list:
+        if equal (number, check_number):
+            return True
+    return False
 
 def block_compare (block1, block2):
     return rect_compare (block1.rect, block2.rect)
@@ -43,14 +56,9 @@ def generate_bounding_box_for_rects (rects):
 
     return bounding_box
 
-class Line:
-    def __init__(self, x1, y1, x2, y2) -> None:
-        self.start_point = fitz.Point (x1, y1)
-        self.end_point = fitz.Point (x2, y2)
-
 def line_touches_rect_horizontal (cross_line, bounding_box, path_rects):
-    y0 = cross_line.start_point.y
-    y1 = cross_line.end_point.y
+    y0 = cross_line.y0
+    y1 = cross_line.y1
     if abs (y0 - bounding_box.y0) < DELTA or abs (bounding_box.y1 - y1) < DELTA:   # touching bounding_box
         return True
 
@@ -61,8 +69,8 @@ def line_touches_rect_horizontal (cross_line, bounding_box, path_rects):
     return False
 
 def line_touches_rect_vertical (cross_line, bounding_box, path_rects):
-    x0 = cross_line.start_point.x
-    x1 = cross_line.end_point.x
+    x0 = cross_line.x0
+    x1 = cross_line.x1
     if abs (x0 - bounding_box.x0) < DELTA or abs (bounding_box.x1 - x1) < DELTA:   # touching bounding_box
         return True
 
@@ -73,8 +81,8 @@ def line_touches_rect_vertical (cross_line, bounding_box, path_rects):
     return False
 
 def line_spans_and_in_rect_vertical (cross_line, bounding_box, path_rects):
-    min_y = min (cross_line.start_point.y, cross_line.end_point.y)
-    max_y = max (cross_line.start_point.y, cross_line.end_point.y)
+    min_y = min (cross_line.y0, cross_line.y1)
+    max_y = max (cross_line.y0, cross_line.y1)
 
     if line_touches_rect_vertical (cross_line, bounding_box, path_rects):
         return False
@@ -89,13 +97,33 @@ def line_spans_and_in_rect_vertical (cross_line, bounding_box, path_rects):
 
     return False
         
+class Line:
+    def __init__(self, x0, y0, x1, y1) -> None:
+        self.x0 = x0
+        self.y0 = y0
+        self.x1 = x1
+        self.y1 = y1
 
-class DealPage ():
+    def is_vertical (self):
+        return equal (self.x0, self.x1)
+
+    def is_horizontal (self):
+        return equal (self.y0, self.y1)
+
+class PageBlock:
+    '''A PageBlock Class consists of a single identified rectangle on the Page, with associated fill color'''
+
+    def __init__ (self, rect, fill_color = None) -> None:
+        super ().__init__ ()
+        self.rect = rect
+        self.fill_color = fill_color
+
+class DealPage:
     '''A DealPage class consists of a set of sorted PageBlocks associated with a single page of a Deal'''
     def __init__(self, expected_factor) -> None:
         self.expected_factor = expected_factor
         self.block_list = []            # A list of sorted PageBlock(s)
-        self.missing_blocks_list = []   # A list of boolean values T/F (currently unused)
+        self.missing_blocks_list = []   # A list of boolean values T/F
 
     def generate_cross_line_from_path (self, path, path_rects, bounding_box):
         path_items = path["items"]
@@ -229,7 +257,7 @@ class DealPage ():
 
         return fitz.Rect (top_left, bottom_right)
 
-    def generate_rects_from_path (self, doc_page):
+    def generate_rects_and_crosslines_from_path (self, doc_page):
         paths = doc_page.get_drawings()  # extract existing drawings
 
         path_rects = []
@@ -238,14 +266,69 @@ class DealPage ():
             if path_rect != None:
                 path_rects.append (path_rect)
 
-        # sort the rects
-        path_rects = sorted (path_rects, key = cmp_to_key (rect_compare))
-
         bounding_box = generate_bounding_box_for_rects (path_rects)
         cross_lines = self.generate_cross_lines_for_page (doc_page, path_rects, bounding_box)
+
+        # sort the rects
+        path_rects = sorted (path_rects, key = cmp_to_key (rect_compare))
         return path_rects, cross_lines
 
+    def generate_x_y_axis_points (self, path_rects, cross_lines):
+        x_list = []
+        y_list = []
+
+        num_rects = len (path_rects)
+
+        for rect_index in range (1, num_rects):     # Ignore the first rectangle. Its is the title rectangle
+            rect = path_rects[rect_index]
+
+            if not number_in_list (x_list, rect.x0):    # This check is kind-of inefficient. But should not matter for small lists
+                x_list.append (rect.x0)
+            if not number_in_list (y_list, rect.y0):
+                y_list.append (rect.y0)
+            if not number_in_list (x_list, rect.x1):
+                x_list.append (rect.x1)
+            if not number_in_list (y_list, rect.y1):
+                y_list.append (rect.y1)
+
+        for line in cross_lines:
+            if line.is_vertical ():
+                if not number_in_list (x_list, line.x0):
+                    x_list.append (line.x0)
+
+            if line.is_horizontal ():
+                if not number_in_list (y_list, line.y0):
+                    y_list.append (line.y0)
+
+        x_list = sorted (x_list, key = cmp_to_key (number_compare))
+        y_list = sorted (y_list, key = cmp_to_key (number_compare))
+
+        return x_list, y_list
+
+    def generate_blocks_from_x_y_values (self, x_list, y_list):
+        num_x = len (x_list)
+        num_y = len (y_list)
+        for y_index in range (0, num_y - 1):
+            for x_index in range (0, num_x - 1):
+                rect = fitz.Rect (x0 = x_list[x_index], y0 = y_list[y_index], x1 = x_list[x_index + 1], y1 = y_list[y_index + 1])
+                block = PageBlock (rect)
+                self.block_list.append (block)
+
+    def generate_blocks_from_path (self, doc_page):
+        '''Generate PageBlock(s) by examining the (filled) paths in doc_page'''
+        path_rects, cross_lines = self.generate_rects_and_crosslines_from_path (doc_page)
+        if len (path_rects) == 0:
+            # print ("Cannot find any rects from paths. Cannot generate blocks")
+            return
+
+        x_list, y_list = self.generate_x_y_axis_points (path_rects, cross_lines)
+
+        self.generate_blocks_from_x_y_values (x_list, y_list)
+
+        return self.block_list
+
     def generate_blocks_from_rects (self, doc_page):
+        '''Generate PageBlock(s) by examining the rectangles in doc_page'''
         paths = doc_page.get_drawings ()  # extract existing drawings
 
         for path in paths:
@@ -312,11 +395,11 @@ class DealPage ():
 
         line_index = 0
         for line in lines:
-            shape.draw_line(line.start_point, line.end_point)
+            shape.draw_line (fitz.Point (line.x0, line.y0), fitz.Point (line.x1, line.y1))
 
             text_point = fitz.Point ()
-            text_point.x = (line.start_point.x + line.end_point.x) / 2
-            text_point.y = (line.start_point.y + line.end_point.y) / 2
+            text_point.x = (line.x0 + line.x1) / 2
+            text_point.y = (line.y0 + line.y1) / 2
             text = f"L{line_index}"
             shape.insert_text (text_point, text)
             # print (f"Line {line_index}, start_point = {line.start_point}, end_point = {line.end_point}")
@@ -409,11 +492,3 @@ class DealPage ():
         for block in self.block_list:
             check_block_index = self.check_block (self.block_list, block, block_index, check_block_index)
             block_index += 1
-
-class PageBlock ():
-    '''A PageBlock Class consists of a single identified rectangle on the Page, with associated fill color'''
-
-    def __init__ (self, rect, fill_color) -> None:
-        super ().__init__ ()
-        self.rect = rect
-        self.fill_color = fill_color

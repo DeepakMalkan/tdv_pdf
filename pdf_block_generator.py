@@ -21,16 +21,18 @@ class PdfBlockGenerator ():
             generated_blocks = deal_page.block_list
             num_genenerated_blocks = len (generated_blocks)
             if num_genenerated_blocks == 0:
-                # print (f"NO blocks for page {basepath}:{page_index}, expected_factor {expected_factor}")
-                path_rects, cross_lines = deal_page.generate_rects_from_path (doc_page)
+                deal_page.generate_blocks_from_path (doc_page)
+                generated_blocks = deal_page.block_list
+                num_genenerated_blocks = len (generated_blocks)
 
-                deal_page.draw_rects_and_lines (doc_page, page_index, outdoc, path_rects, cross_lines)
-            else:
-                deal_page.draw_shapes_for_blocks (doc_page, page_index, outdoc)
+            if num_genenerated_blocks == 0:
+                print (f"NO blocks for page {basepath}:{page_index}, expected_factor {expected_factor}")
+                continue
+
+            deal_page.draw_shapes_for_blocks (doc_page, page_index, outdoc)
 
             self.expected_factor = deal_page.check_and_update_expected_factor ()
 
-            # Comment out following. Currently we do not have any mssing blocks.
             deal_page.check_for_missing_blocks ()
             if len (deal_page.missing_blocks_list) != 0:
                 print (f"MISSING blocks for page {basepath}:{page_index}, expected_factor {expected_factor}, got {len (generated_blocks)}")

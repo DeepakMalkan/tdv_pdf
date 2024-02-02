@@ -4,9 +4,10 @@ inpath1 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwi
 inpath2 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011222 vF.pdf"
 inpath3 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 011223 vF.pdf"
 inpath4 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 030222 vF.pdf"
+inpath5 = "C:/Users/Deepak.Malkan/OneDrive - Bentley Systems, Inc/Documents/iTwin Ventures/Bentley Biweekly/Bentley Biweekly 031323 vF.pdf"
 
-doc = fitz.open(inpath4)
-page = doc[23]
+doc = fitz.open(inpath5)
+page = doc[21]
 paths = page.get_drawings()  # extract existing drawings
 # this is a list of "paths", which can directly be drawn again using Shape
 # -------------------------------------------------------------------------
@@ -145,4 +146,5 @@ outpath1 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 111723.pdf"
 outpath2 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 011222.pdf"
 outpath3 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 011223.pdf"
 outpath4 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 030222.pdf"
-outpdf.save(outpath3)
+outpath5 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Graphics 031323.pdf"
+outpdf.save(outpath5)
