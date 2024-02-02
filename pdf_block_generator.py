@@ -30,13 +30,15 @@ class PdfBlockGenerator ():
             self.expected_factor = deal_page.check_and_update_expected_factor ()
 
             # Comment out following. Currently we do not have any mssing blocks.
-            # deal_page.check_for_missing_blocks ()
-            # if len (deal_page.missing_blocks_list) != 0:
-            #     print (f"MISSING blocks for page {basepath}:{page_index}, expected_factor {expected_factor}, got {len (generated_blocks)}")
-            #     print (f"Missing Blocks List for page {page_index} = {deal_page.missing_blocks_list}")
+            deal_page.check_for_missing_blocks ()
+            if len (deal_page.missing_blocks_list) != 0:
+                print (f"MISSING blocks for page {basepath}:{page_index}, expected_factor {expected_factor}, got {len (generated_blocks)}")
+                print (f"Missing Blocks List for page {page_index} = {deal_page.missing_blocks_list}")
 
         if outpdf != None:
             outpdf.save(outpath)
+
+        doc.close ()
 
         return pdf_page_list
 
@@ -61,7 +63,7 @@ if __name__ == '__main__':
     outpath8 ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/Blocks 011223.pdf"
 
     # pages1 = [8, 9, 10, 15, 16]
-    pages1 = [8]
+    pages1 = [20]
     pages2 = [13, 14, 15, 16]
     pages3 = [12]
     pages4 = [11]
