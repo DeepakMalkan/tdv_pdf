@@ -160,26 +160,19 @@ class PdfProcessorPhase1 ():
             deals_expected_factor = 7
 
         # self.priority_deals.generate_blocks (self.path, )
-        out_path ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata"
         block_generator = PdfBlockGenerator ()
         if self.priority_deals.number_of_pages > 0:
-            out_file = f"{out_path}/priority_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Priority", self.priority_deals.page_list, out_file, deals_expected_factor)
+            block_generator.generate_blocks_for_deal_section (self.path, self.priority_deals, deals_expected_factor)
         if self.new_deals.number_of_pages > 0:
-            out_file = f"{out_path}/new_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:New", self.new_deals.page_list, out_file, deals_expected_factor)
+            block_generator.generate_blocks_for_deal_section (self.path, self.new_deals, deals_expected_factor)
         if self.other_deals.number_of_pages > 0:
-            out_file = f"{out_path}/other_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Other", self.other_deals.page_list, out_file, deals_expected_factor)
+            block_generator.generate_blocks_for_deal_section (self.path, self.other_deals, deals_expected_factor)
         if self.activate_potential.number_of_pages > 0:
-            out_file = f"{out_path}/activate_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Activate", self.activate_potential.page_list, out_file, 3)
+            block_generator.generate_blocks_for_deal_section (self.path, self.activate_potential, 3)
         if self.commercial_partnership.number_of_pages > 0:
-            out_file = f"{out_path}/commercial_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Commercial", self.commercial_partnership.page_list, out_file, 3)
+            block_generator.generate_blocks_for_deal_section (self.path, self.commercial_partnership, 3)
         if self.pass_track_deals.number_of_pages > 0:
-            out_file = f"{out_path}/pass_track_{self.basepath}"
-            block_generator.generate_blocks_for_pages (self.path, f"{self.basepath}:Pass_Track", self.pass_track_deals.page_list, out_file, 3)
+            block_generator.generate_blocks_for_deal_section (self.path, self.pass_track_deals, 3)
 
     def print_info (self):
         print (f"Path = {self.path}")

@@ -120,7 +120,8 @@ class PageBlock:
 
 class DealPage:
     '''A DealPage class consists of a set of sorted PageBlocks associated with a single page of a Deal'''
-    def __init__(self, expected_factor) -> None:
+    def __init__(self, page_index, expected_factor) -> None:
+        self.page_index = page_index
         self.expected_factor = expected_factor
         self.block_list = []            # A list of sorted PageBlock(s)
         self.missing_blocks_list = []   # A list of boolean values T/F

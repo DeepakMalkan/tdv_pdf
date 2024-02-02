@@ -1,5 +1,6 @@
 import os.path
 import apsw
+import deal_page as DealPage
 import company_data as CompanyData
 
 class DealsSection ():
@@ -19,6 +20,7 @@ class DealsSection ():
         self.first_page = 0
         self.number_of_pages = 0
         self.page_list = []
+        self.deal_page_list = []
 
     def save (self, connection, table_name, file_key):
         if self.number_of_pages > 0:
