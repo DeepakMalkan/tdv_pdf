@@ -1,7 +1,7 @@
 import time
 import re
+import fitz
 from pdf_block_generator import PdfBlockGenerator
-from pypdf import PdfReader
 from sqlite_processor import Phase1Db
 from sqlite_processor import Phase1PdfData
 from deals_section import DealsSection
@@ -26,14 +26,14 @@ class PdfProcessorPhase1 ():
         self.path = path
         self.basepath, self.file_key = Phase1Db.generate_basepath_and_file_key (self.path)
 
-        self.reader = PdfReader (path)
+        self.doc = fitz.open (path)
 
-        metadata = self.reader.metadata
-        self.author = metadata.author
-        self.creator = metadata.creator
-        self.subject = metadata.subject
-        self.title = metadata.title
-        self.number_of_pages = len (self.reader.pages)
+        metadata = self.doc.metadata
+        self.author = metadata['author']
+        self.creator = metadata['creator']
+        self.subject = metadata['subject']
+        self.title = metadata['title']
+        self.number_of_pages = self.doc.page_count
 
         self.priority_deals = DealsSection.CreatePriorityDealsSection ()
         self.new_deals = DealsSection.CreateNewDealsSection ()
@@ -48,9 +48,10 @@ class PdfProcessorPhase1 ():
     def extract_page_text (self):
         time_start = time.perf_counter ()
 
-        page_number = 1
-        for page in self.reader.pages:
-            text = page.extract_text ()
+        for page_number in range (0, self.number_of_pages):
+            page = self.doc.load_page (page_number)
+            rect = fitz.Rect (x0=0, y0=0, x1=720, y1=100)
+            text = page.get_text (sort = True, clip = rect)
             self.page_text_dict[page_number] = text
 
             page_number += 1

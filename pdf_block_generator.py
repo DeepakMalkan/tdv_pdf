@@ -12,7 +12,7 @@ class PdfBlockGenerator ():
 
         for deal_page in deal_page_list:
             page_index = deal_page.page_index
-            doc_page = indoc[page_index - 1]
+            doc_page = indoc[page_index]
             deal_page.draw_shapes_for_blocks (doc_page, page_index, outdoc)
 
         outdoc.save (outpath)
@@ -21,7 +21,7 @@ class PdfBlockGenerator ():
         deal_page_list = []
 
         for page_index in pages:
-            doc_page = indoc[page_index - 1]
+            doc_page = indoc[page_index]
             deal_page = DealPage (page_index, expected_factor)
             deal_page_list.append (deal_page)
 
