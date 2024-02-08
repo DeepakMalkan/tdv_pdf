@@ -110,7 +110,14 @@ def simplify_text_in_string (text_string):
 
 def process_description (text_string):
     text_string = simplify_text_in_string (text_string)
-    text_partition = text_string.partition ("Next Step(s):")
+    text_partition = text_string.partition ("Next Step:")
+
+    if len (text_partition[2]) == 0:
+        text_partition = text_string.partition ("Next Step(s):")
+
+    if len (text_partition[2]) == 0:
+        text_partition = text_string.partition ("Next Steps:")
+
     return text_partition[0], text_partition[2]
 
 class Line:
@@ -616,7 +623,7 @@ class DealPage:
         block_text = doc_page.get_text (sort = True, clip = description_block.rect).lstrip ()
         description_text, next_step_text = process_description (block_text)
         company_data.attributes_dict[CompanyData.DESCRIPTION_KEY] = simplify_text_in_string (description_text)
-        company_data.next_step = next_step_text
+        company_data.next_step = simplify_text_in_string (next_step_text.lstrip ())
 
         self.get_block_text (doc_page, list_index + 2, company_data, CompanyData.STAGE_FUNDING_KEY)
 

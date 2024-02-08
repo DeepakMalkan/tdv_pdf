@@ -41,6 +41,7 @@ PHASE2_TABLE_COMPANY_HISTORY = "phase2_table_company_history"
 COMPANY_NAME = "company_name"
 ATTRIBUTE_NAME = "attribute_key"
 ATTRIBUTE_VALUE = "attribute_value"
+NEXT_STEPS = "next_steps"
 
 TITLE_RECT_X0 = 0
 TITLE_RECT_Y0 = 0

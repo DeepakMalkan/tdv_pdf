@@ -157,6 +157,8 @@ class Phase2Db ():
             connection.execute (query)
             query = f"create table {constants.PHASE2_TABLE_COMPANY_ATTRIBUTES}({constants.COMPANY_NAME} TEXT NOT NULL, {constants.ATTRIBUTE_NAME} TEXT NOT NULL, {constants.ATTRIBUTE_VALUE} TEXT, primary key ({constants.COMPANY_NAME}, {constants.ATTRIBUTE_NAME}), FOREIGN KEY({constants.COMPANY_NAME}) REFERENCES {constants.PHASE2_TABLE_COMPANY_MAIN}({constants.COMPANY_NAME}))"
             connection.execute (query)
+            query = f"create table {constants.PHASE2_TABLE_COMPANY_HISTORY}({constants.COMPANY_NAME} TEXT NOT NULL, {constants.FILE_KEY} TEXT NOT NULL, {constants.NEXT_STEPS} TEXT, primary key ({constants.COMPANY_NAME}, {constants.FILE_KEY}), FOREIGN KEY({constants.COMPANY_NAME}) REFERENCES {constants.PHASE2_TABLE_COMPANY_MAIN}({constants.COMPANY_NAME}))"
+            connection.execute (query)
 
         # First check if company entry exists
         cursor = connection.cursor ()
@@ -176,6 +178,10 @@ class Phase2Db ():
                 connection.execute (query)
         else:
             assert (company_count == 1)
+
+        # insert history entry
+        query = f"insert into {constants.PHASE2_TABLE_COMPANY_HISTORY} values('{company_data.company_name}', '{company_data.file_key}', '{company_data.next_step}')"
+        connection.execute (query)
 
         connection.close ()
 
