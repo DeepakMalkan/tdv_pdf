@@ -1,32 +1,54 @@
-import os.path
-import apsw
-import deal_page as DealPage
-import company_data as CompanyData
+import constants
+import fitz
+from deal_page import DealPage
 
 class DealsSection ():
     """A class that holds data associated with a section of pages - such as Priority Deals, New Deals, Other Deals, etc."""
-
-    PRIORITY_DEALS_TYPE = "Priority_Deals"
-    NEW_DEALS_TYPE = "New_Deals"
-    OTHER_DEALS_TYPE = "Other_Deals"
-    ACTIVATE_POTENTIAL_TYPE = "Activate_Potential"
-    COMMERCIAL_PARTNERSHIPS_TYPE = "Commercial_Partnerships"
-    PASS_TRACK_DEALS_TYPE = "Pass_Track_Deals"
-
-    DEALS_LIST = [PRIORITY_DEALS_TYPE, NEW_DEALS_TYPE, OTHER_DEALS_TYPE, ACTIVATE_POTENTIAL_TYPE, COMMERCIAL_PARTNERSHIPS_TYPE, PASS_TRACK_DEALS_TYPE]
 
     def __init__(self, deal_type) -> None:
         self.deal_type = deal_type
         self.first_page = 0
         self.number_of_pages = 0
-        self.page_list = []
-        self.deal_page_list = []
+        self.page_list = []         # The list of pdf page-indices (zero-based) associated with the section
+        self.deal_page_list = []    # The list of DealPage(s) associated with the section. There is one DealPage per page
+
+    @classmethod
+    def CreatePriorityDealsSection (cls):
+        return DealsSection (constants.PRIORITY_DEALS_TYPE)
+
+    @classmethod
+    def CreateNewDealsSection (cls):
+        return DealsSection (constants.NEW_DEALS_TYPE)
+
+    @classmethod
+    def CreateOtherDealsSection (cls):
+        return DealsSection (constants.OTHER_DEALS_TYPE)
+
+    @classmethod
+    def CreateActivatePotentialSection (cls):
+        return DealsSection (constants.ACTIVATE_POTENTIAL_TYPE)
+
+    @classmethod
+    def CreateCommercialPartnershipsSection (cls):
+        return DealsSection (constants.COMMERCIAL_PARTNERSHIPS_TYPE)
+
+    @classmethod
+    def CreatePassTrackDealsSection (cls):
+        return DealsSection (constants.PASS_TRACK_DEALS_TYPE)
 
     def save (self, connection, table_name, file_key):
         if self.number_of_pages > 0:
             page_list_str = " ".join (str (x) for x in self.page_list)
             query = f"insert into {table_name} values({file_key}, '{self.deal_type}', {self.number_of_pages}, '{page_list_str}')"
             connection.execute (query)
+
+    def save_deal_pages_header (self, connection, table_name, file_key):
+        for page in self.deal_page_list:
+            page.save_header (connection, table_name, file_key)
+
+    def save_deal_pages_blocks (self, connection, table_name, file_key):
+        for page in self.deal_page_list:
+            page.save_blocks (connection, table_name, file_key)
 
     def print (self):
         print (f"Number of {self.deal_type} Pages = {self.number_of_pages}")
@@ -35,26 +57,123 @@ class DealsSection ():
     def check_data (self):
         assert (self.number_of_pages == len (self.page_list))
 
-    @classmethod
-    def CreatePriorityDealsSection (cls):
-        return DealsSection (cls.PRIORITY_DEALS_TYPE)
+    def load_deal_page (self, connection, file_key, page_index):
+        cursor = connection.cursor ()
+        query = f"SELECT * from {constants.PHASE1_TABLE_PAGES} where {constants.FILE_KEY} = {file_key} AND {constants.PAGE_INDEX} = {page_index}"
+        cursor.execute (query)
+        page_row_list = cursor.fetchall ()
+
+        # Make sure that we found only one entry associated for a page
+        assert (len (page_row_list) == 1)
+
+        page_row = page_row_list[0]
+        expected_factor = int (page_row[2])
+        number_of_blocks = int (page_row[3])
+        page = DealPage (page_index, expected_factor)
+        self.deal_page_list.append (page)
+
+        page.load_page_blocks (connection, file_key, page, number_of_blocks)
+
+    def load_deal_pages (self, connection, file_key):
+        for page_index in self.page_list:
+            self.load_deal_page (connection, file_key, page_index)
+
+    def load (self, connection, file_key):
+        cursor = connection.cursor ()
+        query = f"SELECT * from {constants.PHASE1_TABLE_DEALS} where {constants.FILE_KEY} = {file_key} AND {constants.DEAL_TYPE} = '{self.deal_type}'"
+        cursor.execute (query)
+        deal_row_list = cursor.fetchall ()
+
+        deal_count = len (deal_row_list)
+        if deal_count == 0:
+            return
+
+        # Make sure that we found only one entry associated with a deal_type
+        assert (deal_count == 1)
+
+        deal_row = deal_row_list[0]
+        number_of_pages = deal_row[2]
+        page_list = [int(x) for x in (deal_row[3].split (" "))]
+        self.number_of_pages = number_of_pages
+        self.page_list = page_list
+
+        # Now that we have the page_list (the list of page indices) of a single section, we load the DealPage(s) data
+        self.load_deal_pages (connection, file_key)
+
+    def generate_blocks (self, indoc, basepath, expected_factor):
+        self.deal_page_list = DealsSection.generate_blocks_for_pages (indoc, basepath, self.page_list, expected_factor)
 
     @classmethod
-    def CreateNewDealsSection (cls):
-        return DealsSection (cls.NEW_DEALS_TYPE)
+    def generate_blocks_for_pages (cls, indoc, basepath, page_list, expected_factor):
+        deal_page_list = []
+        for page_index in page_list:
+            doc_page = indoc[page_index]
+            page = DealPage (page_index, expected_factor)
+            deal_page_list.append (page)
 
-    @classmethod
-    def CreateOtherDealsSection (cls):
-        return DealsSection (cls.OTHER_DEALS_TYPE)
+            page.generate_blocks_from_rects (doc_page)
 
-    @classmethod
-    def CreateActivatePotentialSection (cls):
-        return DealsSection (cls.ACTIVATE_POTENTIAL_TYPE)
+            num_blocks = len (page.blocks_list)
+            if num_blocks == 0: # If no blocks were generated by looking for rectangles
+                page.generate_blocks_from_path (doc_page)  # then try to generate blocks from paths
+                num_blocks = len (page.blocks_list)
+                if num_blocks == 0:
+                    print (f"NO blocks for page {basepath}:{page_index}, expected_factor {expected_factor}")
+                    continue
 
-    @classmethod
-    def CreateCommercialPartnershipsSection (cls):
-        return DealsSection (cls.COMMERCIAL_PARTNERSHIPS_TYPE)
+            page.check_and_update_expected_factor ()
 
-    @classmethod
-    def CreatePassTrackDealsSection (cls):
-        return DealsSection (cls.PASS_TRACK_DEALS_TYPE)
+            page.check_for_missing_blocks ()
+            if len (page.missing_blocks_list) > 0:
+                # Try to fix for certain missing block pattern
+                if page.missing_first_and_seventh_block ():
+                    page.fixup_first_and_seventh_block ()
+                else:
+                    print (f"MISSING blocks for page {basepath}:{page_index}, expected_factor {page.expected_factor}, got {num_blocks}")
+                    print (f"Missing Blocks List for page {page_index} = {page.missing_blocks_list}")
+
+        return deal_page_list
+
+    def process_company_data (self, path, file_key):
+        doc = fitz.open (path)
+
+        for deal_page in self.deal_page_list:
+            doc_page = doc.load_page (deal_page.page_index)
+            
+            # Get the title text 
+            deal_page.get_text_in_rect (doc, constants.TITLE_RECT_X0, constants.TITLE_RECT_Y0, constants.TITLE_RECT_X1, constants.TITLE_RECT_Y1)
+            rect = fitz.Rect (x0 = constants.TITLE_RECT_X0, y0 = constants.TITLE_RECT_Y0, x1 = constants.TITLE_RECT_X1, y1 = constants.TITLE_RECT_Y1)
+            title_text = doc_page.get_text (sort = True, clip = rect)
+
+            # Regenerate the 'deal_type' by looking at the page-title. Do not use the 'deal_type' from deal section
+            if constants.PRIORITY_ACTIVE_DEALS_TEXT in title_text:
+                deal_type = constants.PRIORITY_DEALS_TYPE
+            elif constants.OTHER_ACTIVE_DEALS_TEXT in title_text:
+                deal_type = constants.OTHER_DEALS_TYPE
+            elif constants.NEW_ACTIVE_DEALS_TEXT in title_text:
+                deal_type = constants.NEW_DEALS_TYPE
+            elif constants.ACTIVE_DEALS_TEXT in title_text:
+                deal_type = constants.PRIORITY_DEALS_TYPE
+            elif constants.ACTIVATE_COMPANIES_TEXT in title_text:
+                deal_type = constants.ACTIVATE_POTENTIAL_TYPE
+            elif constants.COMMERCIAL_PARTNERSHIP_TEXT in title_text:
+                deal_type = constants.COMMERCIAL_PARTNERSHIPS_TYPE
+            elif constants.PASS_TRACK_DEALS_TEXT in title_text:
+                deal_type = constants.PASS_TRACK_DEALS_TYPE
+
+            if deal_page.expected_factor == 7:
+                deal_page.process_company_data_detailed (deal_type, file_key, doc_page)
+            elif deal_page.expected_factor == 3:
+                deal_page.process_company_data_short (deal_type, file_key, doc_page)
+            else:
+                print ("Unexpected expected_factor")
+
+        doc.close ()
+
+    def save_company_data (self, phase2_db):
+        for page in self.deal_page_list:
+            page.save_company_data (phase2_db)
+
+    def print_company_data (self):
+        for page in self.deal_page_list:
+            page.print_company_data ()

@@ -1,6 +1,7 @@
 import os.path
 import apsw
-import deals_section as DealsSection
+import constants
+from deals_section import DealsSection
 
 class Phase1PdfData ():
     def __init__ (self, file_key, file_name, number_of_pages, deals_section_list):
@@ -18,6 +19,14 @@ class Phase1PdfData ():
         for deals_section in self.deals_section_list:
             deals_section.save (connection, table_name, self.file_key)
 
+    def save_pages_table (self, connection, table_name):
+        for deals_section in self.deals_section_list:
+            deals_section.save_deal_pages_header (connection, table_name, self.file_key)
+
+    def save_blocks_table (self, connection, table_name):
+        for deals_section in self.deals_section_list:
+            deals_section.save_deal_pages_blocks (connection, table_name, self.file_key)
+
     def print (self):
         print (f"File Key = {self.file_key}")
         print (f"File Name = {self.file_name}")
@@ -25,18 +34,16 @@ class Phase1PdfData ():
         for deals_section in self.deals_section_list:
             deals_section.print ()
 
+    def load (self, connection, file_key):
+        # For each of the deal types, get the page-list associated with the deal
+        for deal_type in constants.DEALS_LIST:
+            deals_section = DealsSection (deal_type)
+            deals_section.load (connection, file_key)
+            self.deals_section_list.append (deals_section)
+
 class Phase1Db ():
     """A class that processes Sqlite files .. for phase1"""
     """Use SQLite Viewer Web App - https://sqliteviewer.app/ - to quickly view Sqlite files"""
-
-    PATH ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/sqldb_phase1"
-    PHASE1_TABLE_MAIN = "phase1_table_main"
-    PHASE1_TABLE_DEALS = "phase1_table_deals"
-    FILE_KEY = "file_key"
-    FILE_NAME = "file_name"
-    DEAL_TYPE = "deal_type"
-    NUMBER_OF_PAGES = "number_of_pages"
-    PAGE_LIST = "pages"
 
     @classmethod
     def generate_basepath_and_file_key (cls, path):
@@ -52,29 +59,36 @@ class Phase1Db ():
         super ().__init__ ()
 
     def save (self, phase1_pdf_data):
-        if os.path.isfile (Phase1Db.PATH):
-            connection = apsw.Connection (Phase1Db.PATH, flags = apsw.SQLITE_OPEN_READWRITE) # This connection simply opens a file
+        if os.path.isfile (constants.PHASE1DB_PATH):
+            connection = apsw.Connection (constants.PHASE1DB_PATH, flags = apsw.SQLITE_OPEN_READWRITE) # This connection simply opens a file
         else:
-            connection = apsw.Connection (Phase1Db.PATH) # This connection creates the file
-            query = f"create table {Phase1Db.PHASE1_TABLE_MAIN}({Phase1Db.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {Phase1Db.FILE_NAME} TEXT, {Phase1Db.NUMBER_OF_PAGES} INTEGER)"
+            connection = apsw.Connection (constants.PHASE1DB_PATH) # This connection creates the file
+            query = f"create table {constants.PHASE1_TABLE_MAIN}({constants.FILE_KEY} TEXT NOT NULL PRIMARY KEY, {constants.FILE_NAME} TEXT, {constants.NUMBER_OF_PAGES} INTEGER)"
             connection.execute (query)
-            query = f"create table {Phase1Db.PHASE1_TABLE_DEALS}({Phase1Db.FILE_KEY} TEXT NOT NULL, {Phase1Db.DEAL_TYPE} TEXT NOT NULL, {Phase1Db.NUMBER_OF_PAGES} INTEGER, {Phase1Db.PAGE_LIST} TEXT, primary key ({Phase1Db.FILE_KEY}, {Phase1Db.DEAL_TYPE}), FOREIGN KEY({Phase1Db.FILE_KEY}) REFERENCES {Phase1Db.PHASE1_TABLE_MAIN}({Phase1Db.FILE_KEY}))"
+            query = f"create table {constants.PHASE1_TABLE_DEALS}({constants.FILE_KEY} TEXT NOT NULL, {constants.DEAL_TYPE} TEXT NOT NULL, {constants.NUMBER_OF_PAGES} INTEGER, {constants.PAGE_LIST} TEXT, primary key ({constants.FILE_KEY}, {constants.DEAL_TYPE}), FOREIGN KEY({constants.FILE_KEY}) REFERENCES {constants.PHASE1_TABLE_MAIN}({constants.FILE_KEY}))"
+            connection.execute (query)
+            query = f"create table {constants.PHASE1_TABLE_PAGES}({constants.FILE_KEY} TEXT NOT NULL, {constants.PAGE_INDEX} INTEGER, {constants.EXPECTED_FACTOR} INTEGER, {constants.NUMBER_OF_BLOCKS} INTEGER,  primary key ({constants.FILE_KEY}, {constants.PAGE_INDEX}), FOREIGN KEY({constants.FILE_KEY}) REFERENCES {constants.PHASE1_TABLE_MAIN}({constants.FILE_KEY}))"
+            connection.execute (query)
+            query = f"create table {constants.PHASE1_TABLE_BLOCKS}({constants.FILE_KEY} TEXT NOT NULL, {constants.PAGE_INDEX} INTEGER, {constants.BLOCK_INDEX} INTEGER, {constants.BLOCK_X0} REAL, {constants.BLOCK_Y0} REAL, {constants.BLOCK_X1} REAL, {constants.BLOCK_Y1} REAL, primary key ({constants.FILE_KEY}, {constants.PAGE_INDEX}, {constants.BLOCK_INDEX}), FOREIGN KEY({constants.FILE_KEY}) REFERENCES {constants.PHASE1_TABLE_MAIN}({constants.FILE_KEY}))"
             connection.execute (query)
 
-        phase1_pdf_data.save_main_table (connection, Phase1Db.PHASE1_TABLE_MAIN)
-        phase1_pdf_data.save_deals_table (connection, Phase1Db.PHASE1_TABLE_DEALS)
+        phase1_pdf_data.save_main_table (connection, constants.PHASE1_TABLE_MAIN)
+        phase1_pdf_data.save_deals_table (connection, constants.PHASE1_TABLE_DEALS)
+        phase1_pdf_data.save_pages_table (connection, constants.PHASE1_TABLE_PAGES)
+        phase1_pdf_data.save_blocks_table (connection, constants.PHASE1_TABLE_BLOCKS)
 
         connection.close ()
 
-    def load_phase1_pdf_data (self, file_key):
+    def load (self, file_key):
         """Load the data associated with a single PDF file (identified by file_key) in the Phase1 SQLITE file"""
-        if os.path.isfile (Phase1Db.PATH) == False:
+        if os.path.isfile (constants.PHASE1DB_PATH) == False:
             return
 
-        connection = apsw.Connection (Phase1Db.PATH, flags = apsw.SQLITE_OPEN_READONLY)
+        connection = apsw.Connection (constants.PHASE1DB_PATH, flags = apsw.SQLITE_OPEN_READONLY)
         cursor = connection.cursor ()
 
-        query = f"SELECT * from {Phase1Db.PHASE1_TABLE_MAIN} WHERE {Phase1Db.FILE_KEY} = {file_key}"
+        # Locate the pdf file entry in PHASE1_TABLE_MAIN
+        query = f"SELECT * from {constants.PHASE1_TABLE_MAIN} WHERE {constants.FILE_KEY} = {file_key}"
         cursor.execute (query)
         file_rows = cursor.fetchall ()
 
@@ -87,38 +101,18 @@ class Phase1Db ():
 
         file_row = file_rows[0]
         phase1_pdf_data = Phase1PdfData (file_key, file_row[1], file_row[2], deals_section_list=[])
-
-        for deal_type in DealsSection.DEALS_LIST:
-            query = f"SELECT * from {Phase1Db.PHASE1_TABLE_DEALS} where {Phase1Db.FILE_KEY} = {file_key} AND {Phase1Db.DEAL_TYPE} = '{deal_type}'"
-            cursor.execute (query)
-            file_deals = cursor.fetchall ()
-
-            deal_count = len (file_deals)
-            if deal_count == 0:
-                continue
-
-            # Make sure that we found only one entry associated with a deal_type
-            assert (deal_count == 1)
-
-            deal_row = file_deals[0]
-            deal_type = deal_row[1]
-            number_of_pages = deal_row[2]
-            page_list = [int(x) for x in (deal_row[3].split (" "))]
-            deals_section = DealsSection (deal_type)
-            deals_section.number_of_pages = number_of_pages
-            deals_section.page_list = page_list
-            phase1_pdf_data.deals_section_list.append (deals_section)
+        phase1_pdf_data.load (connection, file_key)
 
         return phase1_pdf_data
 
     def dump (self):
-        if os.path.isfile (Phase1Db.PATH) == False:
+        if os.path.isfile (constants.PHASE1DB_PATH) == False:
             return
 
-        connection = apsw.Connection (Phase1Db.PATH, flags = apsw.SQLITE_OPEN_READONLY)
+        connection = apsw.Connection (constants.PHASE1DB_PATH, flags = apsw.SQLITE_OPEN_READONLY)
         cursor = connection.cursor ()
 
-        query = f"SELECT * from {Phase1Db.PHASE1_TABLE_MAIN}"
+        query = f"SELECT * from {constants.PHASE1_TABLE_MAIN}"
         cursor.execute (query)
         file_rows = cursor.fetchall ()
 
@@ -130,7 +124,7 @@ class Phase1Db ():
             number_of_pages = file_row[2]
             print (f"[{file_number}] Filekey = {file_key}, Filename = {file_name}, Number of Pages = {number_of_pages}")
 
-            query = f"SELECT * from {Phase1Db.PHASE1_TABLE_DEALS} where {Phase1Db.FILE_KEY}={file_key}"
+            query = f"SELECT * from {constants.PHASE1_TABLE_DEALS} where {constants.FILE_KEY}={file_key}"
             cursor.execute (query)
             file_deals = cursor.fetchall ()
 
@@ -151,30 +145,22 @@ class Phase2Db ():
     """A class that processes Sqlite files .. for phase2"""
     """Use SQLite Viewer Web App - https://sqliteviewer.app/ - to quickly view Sqlite files"""
 
-    PATH ="D:/Deepak/source/learn-python/tdv_pdf/tmpdata/sqldb_phase2"
-    PHASE2_TABLE_COMPANY_MAIN = "phase2_table_company_main"
-    PHASE2_TABLE_COMPANY_ATTRIBUTES = "phase2_table_company_attributes"
-    PHASE2_TABLE_COMPANY_HISTORY = "phase2_table_company_history"
-    COMPANY_NAME = "company_name"
-    ATTRIBUTE_NAME = "attribute_key"
-    ATTRIBUTE_VALUE = "attribute_value"
-
     def __init__ (self):
         super ().__init__ ()
 
     def save (self, company_data):
-        if os.path.isfile (Phase2Db.PATH):
-            connection = apsw.Connection (Phase2Db.PATH, flags = apsw.SQLITE_OPEN_READWRITE) # This connection simply opens a file
+        if os.path.isfile (constants.PHASE2DB_PATH):
+            connection = apsw.Connection (constants.PHASE2DB_PATH, flags = apsw.SQLITE_OPEN_READWRITE) # This connection simply opens a file
         else:
-            connection = apsw.Connection (Phase2Db.PATH) # This connection creates the file
-            query = f"create table {Phase2Db.PHASE2_TABLE_COMPANY_MAIN}({Phase2Db.COMPANY_NAME} TEXT NOT NULL PRIMARY KEY)"
+            connection = apsw.Connection (constants.PHASE2DB_PATH) # This connection creates the file
+            query = f"create table {constants.PHASE2_TABLE_COMPANY_MAIN}({constants.COMPANY_NAME} TEXT NOT NULL PRIMARY KEY)"
             connection.execute (query)
-            query = f"create table {Phase2Db.PHASE2_TABLE_COMPANY_ATTRIBUTES}({Phase2Db.COMPANY_NAME} TEXT NOT NULL, {Phase2Db.ATTRIBUTE_NAME} TEXT NOT NULL, {Phase2Db.ATTRIBUTE_VALUE} TEXT, primary key ({Phase2Db.COMPANY_NAME}, {Phase2Db.ATTRIBUTE_NAME}), FOREIGN KEY({Phase2Db.COMPANY_NAME}) REFERENCES {Phase2Db.PHASE2_TABLE_COMPANY_MAIN}({Phase2Db.COMPANY_NAME}))"
+            query = f"create table {constants.PHASE2_TABLE_COMPANY_ATTRIBUTES}({constants.COMPANY_NAME} TEXT NOT NULL, {constants.ATTRIBUTE_NAME} TEXT NOT NULL, {constants.ATTRIBUTE_VALUE} TEXT, primary key ({constants.COMPANY_NAME}, {constants.ATTRIBUTE_NAME}), FOREIGN KEY({constants.COMPANY_NAME}) REFERENCES {constants.PHASE2_TABLE_COMPANY_MAIN}({constants.COMPANY_NAME}))"
             connection.execute (query)
 
         # First check if company entry exists
         cursor = connection.cursor ()
-        query = f"SELECT * from {Phase2Db.PHASE2_TABLE_COMPANY_MAIN} where {Phase2Db.COMPANY_NAME}='{company_data.company_name}'"
+        query = f"SELECT * from {constants.PHASE2_TABLE_COMPANY_MAIN} where {constants.COMPANY_NAME}='{company_data.company_name}'"
         cursor.execute (query)
         company_rows = cursor.fetchall ()
 
@@ -182,11 +168,11 @@ class Phase2Db ():
 
         # insert only if company entry does not exist
         if company_count == 0:
-            query = f"insert into {Phase2Db.PHASE2_TABLE_COMPANY_MAIN} values('{company_data.company_name}')"
+            query = f"insert into {constants.PHASE2_TABLE_COMPANY_MAIN} values('{company_data.company_name}')"
             connection.execute (query)
 
             for key in company_data.attributes_dict:
-                query = f"insert into {Phase2Db.PHASE2_TABLE_COMPANY_ATTRIBUTES} values('{company_data.company_name}', '{key}', '{company_data.attributes_dict[key]}')"
+                query = f"insert into {constants.PHASE2_TABLE_COMPANY_ATTRIBUTES} values('{company_data.company_name}', '{key}', '{company_data.attributes_dict[key]}')"
                 connection.execute (query)
         else:
             assert (company_count == 1)

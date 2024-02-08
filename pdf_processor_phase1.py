@@ -1,6 +1,7 @@
 import time
 import re
 import fitz
+import constants
 from pdf_block_generator import PdfBlockGenerator
 from sqlite_processor import Phase1Db
 from sqlite_processor import Phase1PdfData
@@ -26,15 +27,6 @@ class PdfProcessorPhase1 ():
         self.path = path
         self.basepath, self.file_key = Phase1Db.generate_basepath_and_file_key (self.path)
 
-        self.doc = fitz.open (path)
-
-        metadata = self.doc.metadata
-        self.author = metadata['author']
-        self.creator = metadata['creator']
-        self.subject = metadata['subject']
-        self.title = metadata['title']
-        self.number_of_pages = self.doc.page_count
-
         self.priority_deals = DealsSection.CreatePriorityDealsSection ()
         self.new_deals = DealsSection.CreateNewDealsSection ()
         self.other_deals = DealsSection.CreateOtherDealsSection ()
@@ -45,19 +37,32 @@ class PdfProcessorPhase1 ():
 
         self.page_text_dict = {}
 
+    def open_doc (self):
+        self.doc = fitz.open (self.path)
+
+        metadata = self.doc.metadata
+        self.author = metadata['author']
+        self.creator = metadata['creator']
+        self.subject = metadata['subject']
+        self.title = metadata['title']
+        self.number_of_pages = self.doc.page_count
+
+    def close_doc (self):
+        self.doc.close ()
+
     def extract_page_text (self):
-        time_start = time.perf_counter ()
+        # time_start = time.perf_counter ()
 
         for page_number in range (0, self.number_of_pages):
-            page = self.doc.load_page (page_number)
-            rect = fitz.Rect (x0=0, y0=0, x1=720, y1=100)
-            text = page.get_text (sort = True, clip = rect)
+            doc_page = self.doc.load_page (page_number)
+            rect = fitz.Rect (x0 = constants.TITLE_RECT_X0, y0 = constants.TITLE_RECT_Y0, x1 = constants.TITLE_RECT_X1, y1 = constants.TITLE_RECT_Y1)
+            text = doc_page.get_text (sort = True, clip = rect)
             self.page_text_dict[page_number] = text
 
             page_number += 1
 
-        time_end = time.perf_counter ()
-        print (f"Extracted page text in {time_end - time_start:0.4f} seconds")
+        # time_end = time.perf_counter ()
+        # print (f"Extracted page text in {time_end - time_start:0.4f} seconds")
 
     def process_for_deals_section (self, deals_section, check_text, page_text, page_number):
         processed = False
@@ -142,8 +147,8 @@ class PdfProcessorPhase1 ():
                 page_text = self.page_text_dict[page_number]
                 self.process_for_deals_section (self.activate_potential, PdfProcessorPhase1.ACTIVATE_COMPANIES1, page_text, page_number)
 
-        time_end = time.perf_counter ()
-        print (f"Extracted deal pages in {time_end - time_start:0.4f} seconds")
+        # time_end = time.perf_counter ()
+        # print (f"Extracted deal pages in {time_end - time_start:0.4f} seconds")
 
     def check_data (self):
         for deals_section in self.deals_section_list:
@@ -160,7 +165,6 @@ class PdfProcessorPhase1 ():
         else:
             deals_expected_factor = 7
 
-        # self.priority_deals.generate_blocks (self.path, )
         block_generator = PdfBlockGenerator ()
         if self.priority_deals.number_of_pages > 0:
             block_generator.generate_blocks_for_deal_section (self.path, self.priority_deals, deals_expected_factor)
@@ -188,6 +192,7 @@ class PdfProcessorPhase1 ():
             deals_section.print ()
 
     def process (self):
+        self.open_doc ()
         self.extract_page_text ()
         self.extract_deals_pages ()
         self.extract_blocks ()
@@ -196,3 +201,5 @@ class PdfProcessorPhase1 ():
 
         self.check_data ()
         # self.print_info ()
+
+        self.close_doc ()

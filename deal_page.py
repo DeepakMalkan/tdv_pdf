@@ -1,5 +1,7 @@
 import fitz
+import constants
 from functools import cmp_to_key
+from company_data import CompanyData
 
 DELTA = 5
 def equal (num1, num2):
@@ -97,6 +99,20 @@ def line_spans_and_in_rect_vertical (cross_line, bounding_box, path_rects):
 
     return False
         
+def simplify_text_in_string (text_string):
+    text_string = text_string.replace ("\n", " ")
+    text_string = text_string.replace ("'", "")     # Remove single quotes for now
+    text_string = text_string.replace ("\r", " ")
+    text_string = text_string.replace ("\u2022", "*")
+    text_string = text_string.replace ("\u2013", "-")
+    text_string = ' '.join(text_string.split())     # Combine consecutive spaces into one
+    return text_string
+
+def process_description (text_string):
+    text_string = simplify_text_in_string (text_string)
+    text_partition = text_string.partition ("Next Step(s):")
+    return text_partition[0], text_partition[2]
+
 class Line:
     def __init__(self, x0, y0, x1, y1) -> None:
         self.x0 = x0
@@ -118,13 +134,53 @@ class PageBlock:
         self.rect = rect
         self.fill_color = fill_color
 
+    def save (self, connection, table_name, file_key, page_index, block_index):
+        query = f"insert into {table_name} values({file_key}, {page_index}, {block_index}, {self.rect.x0}, {self.rect.y0}, {self.rect.x1}, {self.rect.y1})"
+        connection.execute (query)
+
 class DealPage:
     '''A DealPage class consists of a set of sorted PageBlocks associated with a single page of a Deal'''
     def __init__(self, page_index, expected_factor) -> None:
         self.page_index = page_index
         self.expected_factor = expected_factor
-        self.block_list = []            # A list of sorted PageBlock(s)
+        self.blocks_list = []           # A list of sorted PageBlock(s)
         self.missing_blocks_list = []   # A list of boolean values T/F
+        self.company_list = []
+
+    def save_header (self, connection, table_name, file_key):
+        number_of_blocks = len (self.blocks_list)
+        if number_of_blocks > 0:
+            query = f"insert into {table_name} values({file_key}, {self.page_index}, {self.expected_factor}, {number_of_blocks})"
+            connection.execute (query)
+
+    def save_blocks (self, connection, table_name, file_key):
+        number_of_blocks = len (self.blocks_list)
+        if number_of_blocks > 0:
+            block_index = 0
+            for block in self.blocks_list:
+                block.save (connection, table_name, file_key, self.page_index, block_index)
+                block_index += 1
+
+    def load_page_block (self, connection, file_key, page, block_index):
+        cursor = connection.cursor ()
+        query = f"SELECT * from {constants.PHASE1_TABLE_BLOCKS} where {constants.FILE_KEY} = {file_key} AND {constants.PAGE_INDEX} = {page.page_index} AND {constants.BLOCK_INDEX} = {block_index}"
+        cursor.execute (query)
+        block_row_list = cursor.fetchall ()
+
+        num_blocks = len (block_row_list)
+        for block_index in range (0, num_blocks):
+            block_row = block_row_list[block_index]
+            x0 = float (block_row [3])
+            y0 = float (block_row [4])
+            x1 = float (block_row [5])
+            y1 = float (block_row [6])
+            rect = fitz.Rect (x0 = x0, y0 = y0, x1 = x1, y1 = y1)
+            block = PageBlock (rect)
+            self.blocks_list.append (block)
+
+    def load_page_blocks (self, connection, file_key, page, number_of_blocks):
+        for block_index in range (0, number_of_blocks):
+            self.load_page_block (connection, file_key, page, block_index)
 
     def generate_cross_line_from_path (self, path, path_rects, bounding_box):
         path_items = path["items"]
@@ -313,7 +369,7 @@ class DealPage:
             for x_index in range (0, num_x - 1):
                 rect = fitz.Rect (x0 = x_list[x_index], y0 = y_list[y_index], x1 = x_list[x_index + 1], y1 = y_list[y_index + 1])
                 block = PageBlock (rect)
-                self.block_list.append (block)
+                self.blocks_list.append (block)
 
     def generate_blocks_from_path (self, doc_page):
         '''Generate PageBlock(s) by examining the (filled) paths in doc_page'''
@@ -326,7 +382,7 @@ class DealPage:
 
         self.generate_blocks_from_x_y_values (x_list, y_list)
 
-        return self.block_list
+        return self.blocks_list
 
     def generate_blocks_from_rects (self, doc_page):
         '''Generate PageBlock(s) by examining the rectangles in doc_page'''
@@ -366,10 +422,10 @@ class DealPage:
 
                         if process:
                             block = PageBlock (rect, fill_color)
-                            self.block_list.append (block)
+                            self.blocks_list.append (block)
 
         # sort the blocks
-        self.block_list = sorted (self.block_list, key=cmp_to_key (block_compare))
+        self.blocks_list = sorted (self.blocks_list, key=cmp_to_key (block_compare))
 
     def draw_rects (self, doc_page, page_index, rects):
         shape = doc_page.new_shape()  # make a drawing canvas for the output page
@@ -417,13 +473,12 @@ class DealPage:
         self.draw_rects (outpage, page_index, rects)
         self.draw_lines (outpage, lines)
 
-
     def draw_shapes_for_blocks (self, doc_page, page_index, outdoc):
         outpage = outdoc.new_page (width = doc_page.rect.width, height = doc_page.rect.height)
         shape = outpage.new_shape ()  # make a drawing canvas for the output page
 
         block_index = 0
-        for block in self.block_list:
+        for block in self.blocks_list:
             shape.draw_rect (block.rect)
             shape.finish (fill = block.fill_color)
 
@@ -431,7 +486,7 @@ class DealPage:
 
             text_point.x = block.rect.top_left.x
             text_point.y = block.rect.top_left.y
-            text = doc_page.get_text (sort = True, clip = block.rect)
+            text = doc_page.get_text (sort = True, clip = block.rect).lstrip ()
             shape.insert_text (text_point, text)
 
             text_point.x = (block.rect.top_left.x + block.rect.bottom_right.x) / 2
@@ -444,7 +499,7 @@ class DealPage:
         shape.commit()
 
     def check_and_update_expected_factor (self):
-        num_blocks = len (self.block_list)
+        num_blocks = len (self.blocks_list)
         if num_blocks % self.expected_factor == 0:
             return
 
@@ -454,7 +509,7 @@ class DealPage:
         if self.expected_factor == 7 and num_blocks <= 9 and num_blocks % 3 == 0:
             self.expected_factor = 3
 
-    def check_block (self, block_list, block, block_index, check_block_index):
+    def check_block (self, blocks_list, block, block_index, check_block_index):
         block_missing = False
         if check_block_index == 0 or check_block_index == 7:
             if not equal (block.rect.top_left.x, 0):
@@ -465,14 +520,14 @@ class DealPage:
             #   (1) The first block of first row is missing, but first block of second row is not missing (block_index is 6)
             #   (2) The first block of first row is missing, and first block of second row is missing (block_index is 7)
             if block_index != 0 and block_index != 6 and block_index != 7:
-                prev_block = block_list[block_index - 1]
+                prev_block = blocks_list[block_index - 1]
                 if not equal (prev_block.rect.bottom_right.x, block.rect.top_left.x):
                     block_missing = True
 
         if block_missing:
             self.missing_blocks_list.append (True)
             check_block_index += 1
-            return self.check_block (block_list, block, block_index, check_block_index)
+            return self.check_block (blocks_list, block, block_index, check_block_index)
 
         self.missing_blocks_list.append (False)
         check_block_index += 1
@@ -484,12 +539,120 @@ class DealPage:
         if self.expected_factor != 7:
             return
 
-        num_blocks = len (self.block_list)
+        num_blocks = len (self.blocks_list)
         if num_blocks % self.expected_factor == 0:
             return
 
         check_block_index = 0
         block_index = 0
-        for block in self.block_list:
-            check_block_index = self.check_block (self.block_list, block, block_index, check_block_index)
+        for block in self.blocks_list:
+            check_block_index = self.check_block (self.blocks_list, block, block_index, check_block_index)
             block_index += 1
+
+    def missing_first_and_seventh_block (self):
+        return \
+            self.missing_blocks_list[0] == True and \
+            self.missing_blocks_list[1] == False and \
+            self.missing_blocks_list[2] == False and \
+            self.missing_blocks_list[3] == False and \
+            self.missing_blocks_list[4] == False and \
+            self.missing_blocks_list[5] == False and \
+            self.missing_blocks_list[6] == False and \
+            self.missing_blocks_list[7] == True and \
+            self.missing_blocks_list[8] == False and \
+            self.missing_blocks_list[9] == False and \
+            self.missing_blocks_list[10] == False and \
+            self.missing_blocks_list[11] == False and \
+            self.missing_blocks_list[12] == False and \
+            self.missing_blocks_list[13] == False
+
+    def fixup_first_and_seventh_block (self):
+        x0 = 0
+        y0 = self.blocks_list[0].rect.y0
+        x1 = self.blocks_list[2].rect.x0
+        y1 = self.blocks_list[2].rect.y1
+        rect0 = fitz.Rect (x0 = x0, y0 = y0, x1 = x1, y1 = y1)
+        block0 = PageBlock (rect0, self.blocks_list[0].fill_color)
+
+        x0 = 0
+        y0 = y1
+        x1 = self.blocks_list[8].rect.x0
+        y1 = self.blocks_list[8].rect.y1
+        rect7 = fitz.Rect (x0 = x0, y0 = y0, x1 = x1, y1 = y1)
+        block7 = PageBlock (rect7, self.blocks_list[0].fill_color)
+
+        self.blocks_list.insert (0, block0)
+        self.blocks_list.insert (7, block7)
+
+    def get_text_in_rect (self, doc, x0, y0, x1, y1):
+        doc_page = doc.load_page (self.page_index)
+        rect = fitz.Rect (x0 = x0, y0 = y0, x1 = x1, y1 = y1)
+        return doc_page.get_text (sort = True, clip = rect).lstrip ()
+
+    def get_block_text (self, doc_page, list_index, company_data, attribute_key):
+        block = self.blocks_list[list_index]
+        text = doc_page.get_text (sort = True, clip = block.rect).lstrip ()
+        company_data.attributes_dict[attribute_key] = simplify_text_in_string (text)
+
+    def process_one_company_data_main (self, deal_type, file_key, doc_page, list_index):
+        '''Processes the primary attributes for one company listed on the page. The associated company_data object is stored with the DealPage'''
+        if len (self.blocks_list) <= list_index:
+            return
+
+        company_block = self.blocks_list[list_index]
+        block_text = doc_page.get_text (sort = True, clip = company_block.rect).lstrip ()
+        company_text_partition = block_text.partition ("\n")
+        company_name = company_text_partition[0]
+        if "" == company_name:
+            print ("Cannot find company name")
+            return
+
+        company_data = CompanyData (company_name, deal_type, file_key)
+        self.company_list.append (company_data)
+
+        company_data.attributes_dict[CompanyData.DETAILS_KEY] = simplify_text_in_string (block_text)
+
+        description_block = self.blocks_list[list_index + 1]
+        block_text = doc_page.get_text (sort = True, clip = description_block.rect).lstrip ()
+        description_text, next_step_text = process_description (block_text)
+        company_data.attributes_dict[CompanyData.DESCRIPTION_KEY] = simplify_text_in_string (description_text)
+        company_data.next_step = next_step_text
+
+        self.get_block_text (doc_page, list_index + 2, company_data, CompanyData.STAGE_FUNDING_KEY)
+
+        return company_data
+
+    def process_one_company_data_secondary (self, company_data, doc_page, list_index):
+        self.get_block_text (doc_page, list_index, company_data, CompanyData.TEAM_KEY)
+        self.get_block_text (doc_page, list_index + 1, company_data, CompanyData.TECHNOLOGY_KEY)
+        self.get_block_text (doc_page, list_index + 2, company_data, CompanyData.MARKET_EXECUTION_KEY)
+        self.get_block_text (doc_page, list_index + 3, company_data, CompanyData.STRATEGIC_SYNERGIES)
+
+    def process_company_data_detailed (self, deal_type, file_key, doc_page):
+        '''Process company data on the page in detailed form. There can be upto two companies listed'''
+        company_data = self.process_one_company_data_main (deal_type, file_key, doc_page, 0)
+        if company_data != None:
+            self.process_one_company_data_secondary (company_data, doc_page, 3)
+
+        # process the second company data
+        company_data = self.process_one_company_data_main (deal_type, file_key, doc_page, 7)
+        if company_data != None:
+            self.process_one_company_data_secondary (company_data, doc_page, 10)
+
+    def process_company_data_short (self, deal_type, file_key, overall_data_list):
+        '''Process company data on the page in short form. There can be multiple (normally upto 3) companies listed'''
+        self.process_one_company_data_main (deal_type, file_key, overall_data_list, 0)
+
+        # process the second company data
+        self.process_one_company_data_main (deal_type, file_key, overall_data_list, 3)
+
+        # process the third company data
+        self.process_one_company_data_main (deal_type, file_key, overall_data_list, 6)
+
+    def save_company_data (self, phase2_db):
+        for company in self.company_list:
+            phase2_db.save (company)
+
+    def print_company_data (self):
+        for company in self.company_list:
+            company.print ()
