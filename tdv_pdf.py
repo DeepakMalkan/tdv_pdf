@@ -61,5 +61,7 @@ if __name__ == '__main__':
         filename = os.fsdecode (file)
         filepath = f"{dir_path2}/{filename}"
         if filename.endswith (".pdf"):
-            tdv_pdf.process_phase1 (filepath)
+            # tdv_pdf.process_phase1 (filepath)
+            tdv_pdf.process_phase2 (filepath)
+
 

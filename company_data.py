@@ -13,7 +13,7 @@ class CompanyData ():
         self.company_name = company_name
         self.deal_type = deal_type
         self.file_key = file_key
-        self.next_step = "NEXT_STEP"
+        self.progress = ""
 
         self.attributes_dict = {}
 
@@ -21,7 +21,7 @@ class CompanyData ():
         print (f"Company Name = {self.company_name}")
         print (f"   Deal Type = {self.deal_type}")
         print (f"   File Key = {self.file_key}")
-        # print (f"   Next Step = {self.next_step}")
+        print (f"   Progress = {self.progress}")
 
         # for key in self.attributes_dict:
         #     print (f"  {key} = {self.attributes_dict[key]}")

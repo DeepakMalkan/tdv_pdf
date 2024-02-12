@@ -80,9 +80,9 @@ class PdfProcessorPhase1 ():
                 processed = True
         elif deals_section.number_of_pages > len (deals_section.page_list):
             search_page = len (deals_section.page_list) + 1
-            search_text = f"{search_page}[ ]*of[ ]*{deals_section.number_of_pages}"
+            expression = f"{search_page}[ ]*of[ ]*{deals_section.number_of_pages}"
 
-            if re.search (search_text, page_text):
+            if re.search (expression, page_text):
                 deals_section.page_list.append (page_number)
                 processed = True
         return processed

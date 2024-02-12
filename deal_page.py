@@ -1,3 +1,4 @@
+import re
 import fitz
 import constants
 from functools import cmp_to_key
@@ -108,17 +109,14 @@ def simplify_text_in_string (text_string):
     text_string = ' '.join(text_string.split())     # Combine consecutive spaces into one
     return text_string
 
-def process_description (text_string):
-    text_string = simplify_text_in_string (text_string)
-    text_partition = text_string.partition ("Next Step:")
+def extract_progress (text):
+    expression = "\[.*\]"
 
-    if len (text_partition[2]) == 0:
-        text_partition = text_string.partition ("Next Step(s):")
+    match = re.search (expression, text)
+    if match == None:
+        return ""
 
-    if len (text_partition[2]) == 0:
-        text_partition = text_string.partition ("Next Steps:")
-
-    return text_partition[0], text_partition[2]
+    return match.group ()
 
 class Line:
     def __init__(self, x0, y0, x1, y1) -> None:
@@ -599,7 +597,9 @@ class DealPage:
     def get_block_text (self, doc_page, list_index, company_data, attribute_key):
         block = self.blocks_list[list_index]
         text = doc_page.get_text (sort = True, clip = block.rect).lstrip ()
-        company_data.attributes_dict[attribute_key] = simplify_text_in_string (text)
+        text = simplify_text_in_string (text)
+        company_data.attributes_dict[attribute_key] = text
+        return text
 
     def process_one_company_data_main (self, deal_type, file_key, doc_page, list_index):
         '''Processes the primary attributes for one company listed on the page. The associated company_data object is stored with the DealPage'''
@@ -619,13 +619,9 @@ class DealPage:
 
         company_data.attributes_dict[CompanyData.DETAILS_KEY] = simplify_text_in_string (block_text)
 
-        description_block = self.blocks_list[list_index + 1]
-        block_text = doc_page.get_text (sort = True, clip = description_block.rect).lstrip ()
-        description_text, next_step_text = process_description (block_text)
-        company_data.attributes_dict[CompanyData.DESCRIPTION_KEY] = simplify_text_in_string (description_text)
-        company_data.next_step = simplify_text_in_string (next_step_text.lstrip ())
-
-        self.get_block_text (doc_page, list_index + 2, company_data, CompanyData.STAGE_FUNDING_KEY)
+        self.get_block_text (doc_page, list_index + 1, company_data, CompanyData.DESCRIPTION_KEY)
+        stage_funding_text = self.get_block_text (doc_page, list_index + 2, company_data, CompanyData.STAGE_FUNDING_KEY)
+        company_data.progress = extract_progress (stage_funding_text)
 
         return company_data
 
